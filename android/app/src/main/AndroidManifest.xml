@@ -30,6 +30,13 @@
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />
+        <!-- Impeller deaktivieren: verhindert Abstuerze auf echten ARM64-Geraeten (Android 16).
+             Impeller ist ab Flutter 3.27 standardmaessig an auf API 29+.
+             MaskFilter.blur und bestimmte Canvas-Ops koennen auf Impeller + echten Treibern
+             abstuerzen, die im x86_64-Emulator nicht auftreten. -->
+        <meta-data
+            android:name="io.flutter.embedding.android.EnableImpeller"
+            android:value="false" />
     </application>
     <!-- Required to query activities that can process text, see:
          https://developer.android.com/training/package-visibility and

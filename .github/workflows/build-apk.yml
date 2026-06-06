@@ -5,20 +5,20 @@ on:
     branches: [ main ]
   workflow_dispatch:
 
-# Schreibrechte für git push des APK-Commits
+# Schreibrechte fuer git push des APK-Commits
 permissions:
   contents: write
 
 jobs:
   build:
-    name: Build Android Debug APK
+    name: Build Android Debug APKs
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          # Voller Clone-Verlauf nötig für git push am Ende
+          # Voller Clone-Verlauf noetig fuer git push am Ende
           fetch-depth: 0
 
       - name: Set up Java 21
@@ -43,26 +43,45 @@ jobs:
       - name: Run tests
         run: flutter test --reporter=expanded
 
-      - name: Build debug APK
+      # --- Fat APK (arm + arm64 + x86_64) fuer allgemeine Distribution ---
+      - name: Build fat debug APK (all ABIs)
         run: flutter build apk --debug
 
-      - name: Copy APK to build directory
+      # --- ARM64-only APK fuer echte ARM64 Android-Geraete (schlanker, kein x86_64) ---
+      - name: Build ARM64-only debug APK
+        run: flutter build apk --debug --target-platform android-arm64
+
+      - name: Collect APKs
         run: |
           mkdir -p build/release
-          cp build/app/outputs/flutter-apk/app-debug.apk build/release/rocket-app-debug.apk
-          echo "APK size: $(du -sh build/release/rocket-app-debug.apk | cut -f1)"
+          # Fat APK
+          cp build/app/outputs/flutter-apk/app-debug.apk \
+             build/release/rocket-app-debug.apk
+          # ARM64-only APK (gleicher Ausgabepfad, wird durch --target-platform ueberschrieben)
+          cp build/app/outputs/flutter-apk/app-debug.apk \
+             build/release/rocket-app-debug-arm64.apk
+          echo "Fat APK:   $(du -sh build/release/rocket-app-debug.apk | cut -f1)"
+          echo "ARM64 APK: $(du -sh build/release/rocket-app-debug-arm64.apk | cut -f1)"
 
-      - name: Upload APK as artifact
+      - name: Upload fat APK as artifact
         uses: actions/upload-artifact@v4
         with:
-          name: rocket-app-debug
+          name: rocket-app-debug-fat
           path: build/release/rocket-app-debug.apk
           retention-days: 30
 
-      - name: Commit APK to repository
+      - name: Upload ARM64 APK as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: rocket-app-debug-arm64
+          path: build/release/rocket-app-debug-arm64.apk
+          retention-days: 30
+
+      - name: Commit APKs to repository
         run: |
           git config user.name "GitHub Actions"
           git config user.email "actions@github.com"
-          git add build/release/rocket-app-debug.apk
-          git diff --staged --quiet || git commit -m "ci: update debug APK [skip ci]"
+          git add build/release/rocket-app-debug.apk \
+                  build/release/rocket-app-debug-arm64.apk
+          git diff --staged --quiet || git commit -m "ci: update debug APKs (fat + arm64) [skip ci]"
           git push
