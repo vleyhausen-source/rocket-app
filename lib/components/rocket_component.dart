@@ -53,15 +53,20 @@ class RocketComponent extends PositionComponent with CollisionCallbacks {
   RocketState state = RocketState.idle;
 
   // --- Interne Variablen ---
-  final Paint _bodyPaint = Paint()..color = const Color(0xFFE0E0E0);
-  final Paint _nosePaint = Paint()..color = const Color(0xFFFF5252);
-  final Paint _finPaint = Paint()..color = const Color(0xFF9E9E9E);
-  final Paint _flamePaint = Paint()..color = const Color(0xFFFF9800);
-  final Paint _flameCorePaint = Paint()..color = const Color(0xFFFFEB3B);
-  final Paint _crashPaint = Paint()..color = const Color(0xFFFF1744);
+  final Paint _bodyPaint = Paint()..color = const Color(0xFFECEFF1);
+  final Paint _bodyAccentPaint = Paint()..color = const Color(0xFF90A4AE);
+  final Paint _nosePaint = Paint()..color = const Color(0xFFEF5350);
+  final Paint _noseAccentPaint = Paint()..color = const Color(0xFFB71C1C);
+  final Paint _finPaint = Paint()..color = const Color(0xFF78909C);
   final Paint _windowPaint = Paint()..color = const Color(0xFF80DEEA);
+  final Paint _windowGlowPaint = Paint()..color = const Color(0x4400E5FF);
+  final Paint _thrusterPaint = Paint()..color = const Color(0xFF37474F);
+  final Paint _stripePaint = Paint()..color = const Color(0xFF7C4DFF);
 
+  // Flammen-Schichten (von außen nach innen)
+  late final List<Paint> _flamePaints;
   double _flameFlicker = 0.0;
+  double _flameTimer = 0.0;
   final Random _random = Random();
 
   RocketComponent({required Vector2 initialPosition})
@@ -74,6 +79,14 @@ class RocketComponent extends PositionComponent with CollisionCallbacks {
   @override
   Future<void> onLoad() async {
     await super.onLoad();
+    // Flammen-Farb-Schichten initialisieren
+    _flamePaints = [
+      Paint()..color = const Color(0x80FF1744), // Äußerster Schein (rot)
+      Paint()..color = const Color(0xCCFF6D00), // Außenring (orange)
+      Paint()..color = const Color(0xFFFF9800), // Mittlere Flamme
+      Paint()..color = const Color(0xFFFFEB3B), // Innere Flamme (gelb)
+      Paint()..color = const Color(0xFFFFFFFF), // Kern (weiß)
+    ];
     // Hitbox für Coin-Kollision (kleineres Rechteck = fairer Treffer)
     add(RectangleHitbox(
       size: Vector2(size.x * 0.5, size.y * 0.6),
@@ -112,7 +125,13 @@ class RocketComponent extends PositionComponent with CollisionCallbacks {
 
   /// Flammenzittern-Animation aktualisieren
   void _updateFlicker(double dt) {
-    _flameFlicker = _random.nextDouble();
+    _flameTimer += dt;
+    // Mehrere Flicker-Wellen überlagert
+    _flameFlicker = (sin(_flameTimer * 18) * 0.25 +
+            sin(_flameTimer * 31) * 0.15 +
+            sin(_flameTimer * 7) * 0.10 +
+            _random.nextDouble() * 0.15)
+        .abs();
   }
 
   /// Physik-Simulation: Schwerkraft, Schub, Neigung, Luftwiderstand
@@ -192,77 +211,134 @@ class RocketComponent extends PositionComponent with CollisionCallbacks {
     _renderBody(canvas);
   }
 
-  /// Raketenkörper zeichnen
+  /// Raketenkörper zeichnen (detailliertes Sprite)
   void _renderBody(Canvas canvas) {
     final double w = size.x;
     final double h = size.y;
 
-    // --- Heckflossen (links und rechts) ---
+    // --- Triebwerk-Düse ---
+    final RRect nozzle = RRect.fromLTRBR(
+      w * 0.3, h * 0.88, w * 0.7, h,
+      const Radius.circular(3),
+    );
+    canvas.drawRRect(nozzle, _thrusterPaint);
+
+    // --- Heckflossen (aerodynamisch geschwungen) ---
     final Path leftFin = Path()
-      ..moveTo(0, h)
-      ..lineTo(w * 0.15, h * 0.7)
-      ..lineTo(w * 0.3, h * 0.7)
-      ..lineTo(w * 0.3, h)
+      ..moveTo(w * 0.28, h * 0.88)
+      ..lineTo(0, h)
+      ..lineTo(w * 0.28, h)
       ..close();
     canvas.drawPath(leftFin, _finPaint);
 
     final Path rightFin = Path()
-      ..moveTo(w, h)
-      ..lineTo(w * 0.85, h * 0.7)
-      ..lineTo(w * 0.7, h * 0.7)
-      ..lineTo(w * 0.7, h)
+      ..moveTo(w * 0.72, h * 0.88)
+      ..lineTo(w, h)
+      ..lineTo(w * 0.72, h)
       ..close();
     canvas.drawPath(rightFin, _finPaint);
 
-    // --- Rumpf (Rechteck unten) ---
-    final Rect body = Rect.fromLTWH(w * 0.2, h * 0.3, w * 0.6, h * 0.7);
-    canvas.drawRect(body, _bodyPaint);
+    // --- Rumpf (abgerundet) ---
+    final RRect body = RRect.fromLTRBR(
+      w * 0.22, h * 0.28,
+      w * 0.78, h * 0.9,
+      const Radius.circular(6),
+    );
+    canvas.drawRRect(body, _bodyPaint);
 
-    // --- Nase (Dreieck oben) ---
+    // --- Rumpf-Akzent (dunkler Streifen rechts = 3D-Effekt) ---
+    final RRect shade = RRect.fromLTRBR(
+      w * 0.62, h * 0.28,
+      w * 0.78, h * 0.9,
+      const Radius.circular(6),
+    );
+    canvas.drawRRect(shade, _bodyAccentPaint);
+
+    // --- Lila Zier-Streifen ---
+    canvas.drawRect(
+      Rect.fromLTWH(w * 0.22, h * 0.58, w * 0.56, h * 0.05),
+      _stripePaint,
+    );
+
+    // --- Nase (Kegelform) ---
     final Path nose = Path()
       ..moveTo(w * 0.5, 0)
-      ..lineTo(w * 0.8, h * 0.35)
-      ..lineTo(w * 0.2, h * 0.35)
+      ..cubicTo(w * 0.5, 0, w * 0.82, h * 0.22, w * 0.78, h * 0.30)
+      ..lineTo(w * 0.22, h * 0.30)
+      ..cubicTo(w * 0.18, h * 0.22, w * 0.5, 0, w * 0.5, 0)
       ..close();
     canvas.drawPath(nose, _nosePaint);
 
-    // --- Cockpit-Fenster ---
+    // --- Nasen-Schatten ---
+    final Path noseShade = Path()
+      ..moveTo(w * 0.62, h * 0.04)
+      ..cubicTo(w * 0.75, h * 0.10, w * 0.80, h * 0.20, w * 0.78, h * 0.30)
+      ..lineTo(w * 0.62, h * 0.30)
+      ..close();
+    canvas.drawPath(noseShade, _noseAccentPaint);
+
+    // --- Cockpit-Fenster (mit Glow) ---
     canvas.drawCircle(
-      Offset(w * 0.5, h * 0.42),
-      w * 0.12,
+      Offset(w * 0.5, h * 0.43),
+      w * 0.14,
+      _windowGlowPaint,
+    );
+    canvas.drawCircle(
+      Offset(w * 0.5, h * 0.43),
+      w * 0.11,
       _windowPaint,
+    );
+
+    // --- Glanzpunkt im Fenster ---
+    canvas.drawCircle(
+      Offset(w * 0.44, h * 0.40),
+      w * 0.035,
+      Paint()..color = Colors.white.withValues(alpha: 0.85),
     );
   }
 
-  /// Triebwerksflamme zeichnen
+  /// Mehrschichtige Triebwerksflamme
   void _renderFlame(Canvas canvas) {
     final double w = size.x;
     final double h = size.y;
-    final double flicker = 0.7 + _flameFlicker * 0.6;
-    final double flameH = h * 0.35 * flicker;
+    final double boostFactor = externalThrustMultiplier > 1.0 ? 1.5 : 1.0;
+    final double baseH = h * (0.38 + _flameFlicker * 0.22) * boostFactor;
 
-    // Äußere Flamme
-    final Path outerFlame = Path()
-      ..moveTo(w * 0.28, h)
-      ..lineTo(w * 0.5, h + flameH)
-      ..lineTo(w * 0.72, h)
-      ..close();
-    canvas.drawPath(outerFlame, _flamePaint);
+    // Schichten: von außen (breiter, kürzer) nach innen (schmaler, länger)
+    final List<double> widths  = [0.60, 0.46, 0.34, 0.22, 0.10];
+    final List<double> heights = [0.65, 0.78, 0.88, 0.96, 1.00];
 
-    // Innere Flamme (heller Kern)
-    final Path innerFlame = Path()
-      ..moveTo(w * 0.38, h)
-      ..lineTo(w * 0.5, h + flameH * 0.6)
-      ..lineTo(w * 0.62, h)
-      ..close();
-    canvas.drawPath(innerFlame, _flameCorePaint);
+    for (int i = 0; i < _flamePaints.length; i++) {
+      final double hw = (widths[i] / 2) * w;
+      final double fh = baseH * heights[i];
+      final double flickerOffset =
+          sin(_flameTimer * (12 + i * 7)) * w * 0.025;
+
+      final Path flame = Path()
+        ..moveTo(w / 2 - hw, h)
+        ..quadraticBezierTo(
+            w / 2 + flickerOffset, h + fh * 0.6,
+            w / 2, h + fh)
+        ..quadraticBezierTo(
+            w / 2 + flickerOffset, h + fh * 0.6,
+            w / 2 + hw, h)
+        ..close();
+
+      canvas.drawPath(flame, _flamePaints[i]);
+    }
+
+    // Glow unter der Düse
+    canvas.drawCircle(
+      Offset(w / 2, h + 4),
+      w * 0.28 * boostFactor,
+      Paint()
+        ..color = const Color(0x40FF9800)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 10),
+    );
   }
 
-  /// Absturz-Animation zeichnen
+  /// Absturz: Rakete wird ausgeblendet (Explosion kommt vom ExplosionComponent)
   void _renderCrash(Canvas canvas) {
-    final double w = size.x;
-    final double h = size.y;
-    // Einfache rote Explosion als Placeholder
-    canvas.drawCircle(Offset(w * 0.5, h * 0.5), w * 0.8, _crashPaint);
+    // Nichts zeichnen -- ExplosionComponent übernimmt
   }
 }

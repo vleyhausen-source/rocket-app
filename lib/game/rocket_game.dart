@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:rocket_app/components/background_component.dart';
 import 'package:rocket_app/components/cloud_component.dart';
 import 'package:rocket_app/components/coin_component.dart';
+import 'package:rocket_app/components/explosion_component.dart';
 import 'package:rocket_app/components/planet_component.dart';
 import 'package:rocket_app/components/rocket_component.dart';
 import 'package:rocket_app/game/atmosphere_zone.dart';
@@ -312,6 +313,13 @@ class RocketGame extends FlameGame
     _rocket.lateralInput = 0.0;
     _activeTouches.clear();
     phase = GamePhase.crashed;
+
+    // Partikel-Explosion an der Raketen-Position spawnen
+    final Vector2 explosionPos = Vector2(
+      _rocket.position.x,
+      _rocket.position.y - _rocket.size.y / 2,
+    );
+    add(ExplosionComponent(center: explosionPos));
 
     await _audioManager.playCrash();
     await _scoreManager.endRun();

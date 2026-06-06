@@ -1,11 +1,24 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:rocket_app/ui/game_screen.dart';
+import 'package:rocket_app/ui/main_menu_screen.dart';
+import 'package:rocket_app/ui/theme.dart';
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Hochformat erzwingen (Portrait only)
+  await SystemChrome.setPreferredOrientations([
+    DeviceOrientation.portraitUp,
+    DeviceOrientation.portraitDown,
+  ]);
+
+  // Statusbar ausblenden für Vollbild-Spielgefühl
+  await SystemChrome.setEnabledSystemUIMode(
+    SystemUiMode.immersiveSticky,
+  );
+
   runApp(
-    // ProviderScope aktiviert Riverpod fuer die gesamte App
     const ProviderScope(
       child: RocketApp(),
     ),
@@ -20,14 +33,9 @@ class RocketApp extends StatelessWidget {
     return MaterialApp(
       title: 'Rocket Game',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: Colors.deepPurple,
-          brightness: Brightness.dark,
-        ),
-        useMaterial3: true,
-      ),
-      home: const GameScreen(),
+      theme: RocketTheme.materialTheme,
+      // Direkt ins animierte Hauptmenü
+      home: const MainMenuScreen(),
     );
   }
 }
