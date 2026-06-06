@@ -17,8 +17,8 @@ class _ShopScreenState extends State<ShopScreen>
   final UpgradeManager _upgMgr = UpgradeManager.instance;
   final ScoreManager _scoreMgr = ScoreManager.instance;
 
-  // Kaufanimation: welches Upgrade gerade animiert wird
-  String? _purchasingId;
+  // Menge an laufenden Käufen pro ID -- verhindert Race-Condition bei Doppel-Tap
+  final Set<String> _purchasingIds = {};
 
   static const List<UpgradeCategory> _tabs = UpgradeCategory.values;
 
@@ -35,7 +35,8 @@ class _ShopScreenState extends State<ShopScreen>
   }
 
   Future<void> _tryPurchase(UpgradeDefinition upg) async {
-    // Prüfung ohne async-Kauf
+    // Bereits in Kaufvorgang für dieses Upgrade oder ein anderes
+    if (_purchasingIds.contains(upg.id)) return;
     if (_upgMgr.isMaxed(upg.id)) return;
     final int cost = _upgMgr.nextCost(upg.id);
     if (_scoreMgr.totalCoins < cost) {
@@ -43,23 +44,19 @@ class _ShopScreenState extends State<ShopScreen>
       return;
     }
 
-    // Animation starten
-    setState(() => _purchasingId = upg.id);
+    // Lock setzen bevor async -- verhindert gleichzeitige Käufe
+    setState(() => _purchasingIds.add(upg.id));
 
-    // Kauf durchführen
     final bool success = await _upgMgr.purchase(
       upg.id,
       (int amount) => _scoreMgr.spendCoins(amount),
     );
 
-    // Kurze Verzögerung für die Animation
     await Future<void>.delayed(const Duration(milliseconds: 600));
 
     if (mounted) {
-      setState(() => _purchasingId = null);
-      if (success) {
-        _showPurchaseSuccess(upg.name);
-      }
+      setState(() => _purchasingIds.remove(upg.id));
+      if (success) _showPurchaseSuccess(upg.name);
     }
   }
 
@@ -139,7 +136,7 @@ class _ShopScreenState extends State<ShopScreen>
             category: cat,
             upgMgr: _upgMgr,
             scoreMgr: _scoreMgr,
-            purchasingId: _purchasingId,
+            purchasingIds: _purchasingIds,
             onPurchase: _tryPurchase,
           );
         }).toList(),
@@ -156,14 +153,14 @@ class _CategoryTab extends StatelessWidget {
   final UpgradeCategory category;
   final UpgradeManager upgMgr;
   final ScoreManager scoreMgr;
-  final String? purchasingId;
+  final Set<String> purchasingIds;
   final Future<void> Function(UpgradeDefinition) onPurchase;
 
   const _CategoryTab({
     required this.category,
     required this.upgMgr,
     required this.scoreMgr,
-    required this.purchasingId,
+    required this.purchasingIds,
     required this.onPurchase,
   });
 
@@ -179,7 +176,7 @@ class _CategoryTab extends StatelessWidget {
           upgrade: upg,
           currentLevel: upgMgr.levelOf(upg.id),
           totalCoins: scoreMgr.totalCoins,
-          isPurchasing: purchasingId == upg.id,
+          isPurchasing: purchasingIds.contains(upg.id),
           onPurchase: () => onPurchase(upg),
         );
       },

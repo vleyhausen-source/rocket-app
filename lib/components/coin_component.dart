@@ -23,6 +23,9 @@ class CoinComponent extends PositionComponent with CollisionCallbacks {
   late final Paint _coinPaint;
   late final Paint _glowPaint;
 
+  // Gecachter TextPainter -- einmal in onLoad() gebaut, nie neu allokiert
+  late final TextPainter _symbolPainter;
+
   static const double kCoinRadius = 12.0;
 
   CoinComponent({
@@ -50,6 +53,20 @@ class CoinComponent extends PositionComponent with CollisionCallbacks {
     _glowPaint = Paint()
       ..color = baseColor.withValues(alpha: 0.35)
       ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8);
+
+    // Symbol einmalig layouten und cachen (Wert ändert sich nie)
+    _symbolPainter = TextPainter(
+      text: TextSpan(
+        text: value == 1 ? '¢' : value == 2 ? '©' : '★',
+        style: TextStyle(
+          color: Colors.white.withValues(alpha: 0.9),
+          fontSize: kCoinRadius * 1.1,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+      textDirection: TextDirection.ltr,
+    )..layout();
+
     // Kollisionsbox (Kreis)
     add(CircleHitbox(radius: kCoinRadius));
   }
@@ -76,21 +93,11 @@ class CoinComponent extends PositionComponent with CollisionCallbacks {
     // Hauptkörper
     canvas.drawCircle(center, r, _coinPaint);
 
-    // Symbol: Münzen-Zeichen oder Wert
-    final TextPainter tp = TextPainter(
-      text: TextSpan(
-        text: value == 1 ? '¢' : value == 2 ? '©' : '★',
-        style: TextStyle(
-          color: Colors.white.withValues(alpha: 0.9),
-          fontSize: r * 1.1,
-          fontWeight: FontWeight.bold,
-        ),
-      ),
-      textDirection: TextDirection.ltr,
-    )..layout();
-    tp.paint(
+    // Symbol: gecachter TextPainter (keine Allokation per Frame)
+    _symbolPainter.paint(
       canvas,
-      Offset(center.dx - tp.width / 2, center.dy - tp.height / 2),
+      Offset(center.dx - _symbolPainter.width / 2,
+             center.dy - _symbolPainter.height / 2),
     );
   }
 
@@ -118,11 +125,14 @@ class CoinSpawner {
     final List<CoinSpawnData> result = [];
     final double playableHeight = screenHeight - groundHeight;
 
+    // Edge case: Spielfeld zu klein -- keine Coins spawnen
+    final double maxSpawnRange = playableHeight - ScoreConstants.kCoinMinHeightPx;
+    if (maxSpawnRange <= 0) return result;
+
     for (int i = 0; i < count; i++) {
-      // Zufällige Höhe (invertiert: 0 = Boden, playableHeight = oben)
-      final double heightFromGround =
-          ScoreConstants.kCoinMinHeightPx +
-          _random.nextDouble() * (playableHeight - ScoreConstants.kCoinMinHeightPx);
+      // Höhe im Spielfeld: Mindesthöhe bis Bildschirmobergrenze
+      final double heightFromGround = ScoreConstants.kCoinMinHeightPx +
+          _random.nextDouble() * maxSpawnRange;
 
       // Y-Position im Flame-Koordinatensystem (Y=0 oben)
       final double y = screenHeight - groundHeight - heightFromGround;

@@ -430,6 +430,9 @@ class _AnimatedStarfield extends StatelessWidget {
 class _StarfieldPainter extends CustomPainter {
   final double progress;
   static final List<_MenuStar> _stars = _generateStars();
+  // Pre-allokierte Paints -- nie in paint() neu erstellen
+  static final Paint _bgPaint = Paint()..color = const Color(0xFF03020A);
+  static final Paint _starPaint = Paint();
 
   const _StarfieldPainter({required this.progress});
 
@@ -448,22 +451,18 @@ class _StarfieldPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     canvas.drawRect(
       Rect.fromLTWH(0, 0, size.width, size.height),
-      Paint()..color = const Color(0xFF03020A),
+      _bgPaint,
     );
 
     for (final star in _stars) {
       final double twinkle = (sin((progress + star.phase) * pi * 2 * star.speed * 10) * 0.4 + 0.6);
       final double alpha = twinkle.clamp(0.1, 1.0);
-
-      // Leichte Drift nach unten (Parallax-Effekt)
       final double dy = (progress * star.speed * size.height) % size.height;
       final double y = (star.y * size.height + dy) % size.height;
 
-      canvas.drawCircle(
-        Offset(star.x * size.width, y),
-        star.r,
-        Paint()..color = Colors.white.withValues(alpha: alpha),
-      );
+      // Paint wiederverwenden -- nur Color mutieren
+      _starPaint.color = Colors.white.withValues(alpha: alpha);
+      canvas.drawCircle(Offset(star.x * size.width, y), star.r, _starPaint);
     }
   }
 

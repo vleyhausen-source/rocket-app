@@ -62,6 +62,11 @@ class RocketComponent extends PositionComponent with CollisionCallbacks {
   final Paint _windowGlowPaint = Paint()..color = const Color(0x4400E5FF);
   final Paint _thrusterPaint = Paint()..color = const Color(0xFF37474F);
   final Paint _stripePaint = Paint()..color = const Color(0xFF7C4DFF);
+  // Vorab-allokierter Paint für Glanzpunkt und Düsen-Glow (nie neu erstellen in render())
+  final Paint _glintPaint = Paint()..color = const Color(0xD9FFFFFF);
+  final Paint _nozzleGlowPaint = Paint()
+    ..color = const Color(0x40FF9800)
+    ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 10);
 
   // Flammen-Schichten (von außen nach innen)
   late final List<Paint> _flamePaints;
@@ -174,8 +179,10 @@ class RocketComponent extends PositionComponent with CollisionCallbacks {
       }
     }
 
-    // Laterale Kraft auch auf Horizontalgeschwindigkeit
-    velocity.x += lateralInput * effectiveLateral * dt;
+    // Laterale Kraft auf Horizontalgeschwindigkeit -- NUR wenn Schub aktiv
+    if (thrustActive && fuel > 0) {
+      velocity.x += lateralInput * effectiveLateral * dt;
+    }
 
     // --- Luftwiderstand ---
     velocity.x *= pow(GameConstants.kDragFactor, dt * 60).toDouble();
@@ -293,7 +300,7 @@ class RocketComponent extends PositionComponent with CollisionCallbacks {
     canvas.drawCircle(
       Offset(w * 0.44, h * 0.40),
       w * 0.035,
-      Paint()..color = Colors.white.withValues(alpha: 0.85),
+      _glintPaint,
     );
   }
 
@@ -327,13 +334,11 @@ class RocketComponent extends PositionComponent with CollisionCallbacks {
       canvas.drawPath(flame, _flamePaints[i]);
     }
 
-    // Glow unter der Düse
+    // Glow unter der Düse (pre-allokierter Paint)
     canvas.drawCircle(
       Offset(w / 2, h + 4),
       w * 0.28 * boostFactor,
-      Paint()
-        ..color = const Color(0x40FF9800)
-        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 10),
+      _nozzleGlowPaint,
     );
   }
 

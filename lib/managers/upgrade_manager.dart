@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:rocket_app/models/upgrade_model.dart';
 
@@ -19,6 +20,15 @@ class UpgradeManager {
   double boosterTimeRemaining = 0.0;
   bool autopilotActive = false;
   double autopilotTimeRemaining = 0.0;
+
+  /// Setzt alle Levels auf 0 zurück (nur für Tests)
+  @visibleForTesting
+  void resetForTesting() {
+    for (final upg in UpgradeDefinitions.all) {
+      _levels[upg.id] = 0;
+    }
+    initRun();
+  }
 
   // ==========================================================================
   // PERSISTENZ
@@ -42,24 +52,35 @@ class UpgradeManager {
   // LEVEL-ABFRAGEN
   // ==========================================================================
 
+  UpgradeDefinition? _findById(String id) {
+    try {
+      return UpgradeDefinitions.all.firstWhere((u) => u.id == id);
+    } catch (_) {
+      return null; // Unbekannte ID: ignorieren statt crash
+    }
+  }
+
   /// Aktuelles Level eines Upgrades (0 = nicht gekauft)
   int levelOf(String id) => _levels[id] ?? 0;
 
   /// Effektwert des aktuellen Levels
   double valueOf(String id) {
-    final def = UpgradeDefinitions.all.firstWhere((u) => u.id == id);
+    final def = _findById(id);
+    if (def == null) return 0.0;
     return def.valueForLevel(levelOf(id));
   }
 
   /// Ist ein Upgrade auf maximalem Level?
   bool isMaxed(String id) {
-    final def = UpgradeDefinitions.all.firstWhere((u) => u.id == id);
+    final def = _findById(id);
+    if (def == null) return false;
     return def.isMaxLevel(levelOf(id));
   }
 
   /// Kosten für das nächste Level
   int nextCost(String id) {
-    final def = UpgradeDefinitions.all.firstWhere((u) => u.id == id);
+    final def = _findById(id);
+    if (def == null) return 0;
     return def.costForLevel(levelOf(id));
   }
 
@@ -68,16 +89,15 @@ class UpgradeManager {
   // ==========================================================================
 
   /// Kauft das nächste Level. Gibt [true] zurück wenn erfolgreich.
-  /// [deductCoins] muss Coins abziehen und gibt zurück ob genug da waren.
   Future<bool> purchase(
     String upgradeId,
     Future<bool> Function(int amount) deductCoins,
   ) async {
-    final def =
-        UpgradeDefinitions.all.firstWhere((u) => u.id == upgradeId);
+    final def = _findById(upgradeId);
+    if (def == null) return false;
     final int currentLevel = levelOf(upgradeId);
 
-    if (def.isMaxLevel(currentLevel)) return false; // Schon max
+    if (def.isMaxLevel(currentLevel)) return false;
 
     final int cost = def.costForLevel(currentLevel);
     final bool success = await deductCoins(cost);
@@ -171,7 +191,7 @@ class UpgradeManager {
   void initRun() {
     boosterUsed = false;
     shieldUsed = false;
-    shieldsRemaining = shieldCount.toInt();
+    shieldsRemaining = shieldCount.round(); // round() statt toInt() gegen Float-Truncation
     boosterTimeRemaining = 0.0;
     autopilotActive = false;
     autopilotTimeRemaining = 0.0;

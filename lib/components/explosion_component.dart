@@ -27,7 +27,10 @@ class ExplosionComponent extends PositionComponent {
   final List<_Particle> _particles = [];
   final Random _rnd = Random();
   bool _done = false;
-  VoidCallback? onFinished;
+  // --- Pre-allokierte Paints für Render-Performance ---
+  final Paint _corePaint = Paint();
+  final Paint _glowPaint = Paint()
+    ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6);
 
   // Partikel-Farben (Feuer-Palette)
   static const List<Color> _fireColors = [
@@ -39,8 +42,8 @@ class ExplosionComponent extends PositionComponent {
     Color(0xFF9E9E9E), // Grau (Rauch)
   ];
 
-  ExplosionComponent({required Vector2 center, this.onFinished})
-      : super(position: center, size: Vector2.zero());
+  ExplosionComponent({required Vector2 center})
+      : super(position: center, size: Vector2.all(2));
 
   @override
   Future<void> onLoad() async {
@@ -109,7 +112,6 @@ class ExplosionComponent extends PositionComponent {
 
     if (!anyAlive) {
       _done = true;
-      onFinished?.call();
       removeFromParent();
     }
   }
@@ -120,24 +122,16 @@ class ExplosionComponent extends PositionComponent {
       if (p.life <= 0) continue;
 
       final double t = (p.life / p.maxLife).clamp(0.0, 1.0);
-      final double alpha = t * t; // Quadratisch: schnell ausblenden
+      final double alpha = t * t;
       final double r = p.radius * (0.5 + t * 0.5);
 
-      // Glow
-      canvas.drawCircle(
-        Offset(p.x, p.y),
-        r * 2.5,
-        Paint()
-          ..color = p.color.withValues(alpha: alpha * 0.3)
-          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6),
-      );
+      // Glow -- Paint wiederverwenden, nur Color mutieren
+      _glowPaint.color = p.color.withValues(alpha: alpha * 0.3);
+      canvas.drawCircle(Offset(p.x, p.y), r * 2.5, _glowPaint);
 
       // Kern
-      canvas.drawCircle(
-        Offset(p.x, p.y),
-        r,
-        Paint()..color = p.color.withValues(alpha: alpha),
-      );
+      _corePaint.color = p.color.withValues(alpha: alpha);
+      canvas.drawCircle(Offset(p.x, p.y), r, _corePaint);
     }
   }
 }

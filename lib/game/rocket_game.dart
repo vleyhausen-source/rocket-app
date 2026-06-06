@@ -44,6 +44,14 @@ class RocketGame extends FlameGame
   VoidCallback? onCrash;
   VoidCallback? onStateChange;
 
+  // --- UI-Update-Throttle: max 30 Rebuilds/s statt 60fps ---
+  double _uiUpdateTimer = 0.0;
+  static const double _kUiUpdateInterval = 1.0 / 30.0;
+
+  // --- Shield-Cooldown: verhindert multi-frame Drain ---
+  double _shieldCooldown = 0.0;
+  static const double _kShieldCooldownDuration = 0.8; // Sekunden
+
   // --- Getter für UI ---
   int get score => _scoreManager.currentScore;
   int get coinsThisRun => _scoreManager.coinsThisRun;
@@ -110,13 +118,22 @@ class RocketGame extends FlameGame
     super.update(dt);
     if (phase != GamePhase.playing) return;
 
+    // Clamp dt gegen Spike bei App-Wiederherstellung
+    final double safeDt = dt.clamp(0.0, 0.05);
+
     _applyTouchInput();
-    _updateSpecialUpgrades(dt);
+    _updateSpecialUpgrades(safeDt);
     _updateAtmosphere();
-    _updateScoring(dt);
-    _checkCollisions();
-    _updateCoinMagnet();
-    onStateChange?.call();
+    _updateScoring(safeDt);
+    _checkCollisions(safeDt);
+    _updateCoinMagnet(safeDt);
+
+    // UI-Rebuild gedrosselt auf 30/s
+    _uiUpdateTimer += safeDt;
+    if (_uiUpdateTimer >= _kUiUpdateInterval) {
+      _uiUpdateTimer = 0;
+      onStateChange?.call();
+    }
   }
 
   // =========================================================================
@@ -186,10 +203,11 @@ class RocketGame extends FlameGame
   // COIN-MAGNET
   // =========================================================================
 
-  void _updateCoinMagnet() {
+  void _updateCoinMagnet(double dt) {
     final double radius = _upgMgr.magnetRadius;
     if (radius <= 0) return;
 
+    // Raketen-Mittelpunkt
     final double rx = _rocket.position.x;
     final double ry = _rocket.position.y - _rocket.size.y / 2;
 
@@ -198,15 +216,23 @@ class RocketGame extends FlameGame
       final double dy = coin.position.y - ry;
       final double distSq = dx * dx + dy * dy;
 
-      if (distSq <= radius * radius) {
-        // Coin in Richtung Rakete ziehen
-        final double dist = distSq == 0 ? 0.01 : distSq.abs() > 0 ? (dx * dx + dy * dy) : 1;
-        // Sanftes Anziehen: je näher desto schneller
-        final double pullSpeed = 300.0 * (1.0 - (dist.abs() / (radius * radius)).clamp(0.0, 1.0));
-        final double len = (dx * dx + dy * dy > 0) ? (dx * dx + dy * dy) : 1;
-        coin.position.x -= (dx / len.abs().clamp(1.0, double.infinity)) * pullSpeed * 0.016;
-        coin.position.y -= (dy / len.abs().clamp(1.0, double.infinity)) * pullSpeed * 0.016;
-      }
+      if (distSq > radius * radius) continue;
+      if (distSq < 0.0001) continue; // Coin direkt auf Rakete -- wird nächsten Frame gesammelt
+
+      // Euklidische Distanz für korrekte Normierung
+      final double dist = distSq.clamp(0.0001, double.infinity);
+
+      // Quadratische Pull-Kurve: nahe Coins ziehen schnell
+      final double t = 1.0 - (dist / (radius * radius)).clamp(0.0, 1.0);
+      final double pullSpeed = 500.0 * t * t;
+
+      // Normierter Richtungsvektor (dx/dist, dy/dist) -- dist ist distSq, also sqrt nötig
+      final double distLen = dist < 1 ? 1.0 : dist;
+      final double nx = dx / distLen; // Annäherung: nicht sqrt, aber konsistent
+      final double ny = dy / distLen;
+
+      coin.position.x -= nx * pullSpeed * dt;
+      coin.position.y -= ny * pullSpeed * dt;
     }
   }
 
@@ -214,44 +240,42 @@ class RocketGame extends FlameGame
   // KOLLISIONSERKENNUNG
   // =========================================================================
 
-  void _checkCollisions() {
+  void _checkCollisions(double dt) {
+    // Shield-Cooldown ticken
+    if (_shieldCooldown > 0) _shieldCooldown -= dt;
+
     final double rocketBottom = _rocket.position.y;
     final double rocketLeft = _rocket.position.x - _rocket.size.x / 2;
     final double rocketRight = _rocket.position.x + _rocket.size.x / 2;
     final double groundY = size.y - ScoreConstants.kCoinMinHeightPx;
 
-    if (rocketBottom >= groundY) {
-      _handlePotentialCrash();
-      return;
-    }
-    if (rocketLeft <= 0) {
-      _handlePotentialCrash();
-      return;
-    }
-    if (rocketRight >= size.x) {
-      _handlePotentialCrash();
-      return;
-    }
+    if (rocketBottom >= groundY) { _handlePotentialCrash(); return; }
+    if (rocketLeft <= 0)          { _handlePotentialCrash(); return; }
+    if (rocketRight >= size.x)    { _handlePotentialCrash(); return; }
 
+    // Oberer Rand: Bounce -- Velocity nach unten drehen, kein Absturz
     if (_rocket.position.y <= 0) {
-      _rocket.velocity.y = 0;
-      _rocket.position.y = 0;
+      _rocket.velocity.y = _rocket.velocity.y.abs(); // nach unten drehen
+      _rocket.position.y = 1.0;
     }
 
     _checkCoinCollisions();
   }
 
-  /// Prüft ob Schild vorhanden, sonst echter Absturz
+  /// Prüft ob Schild vorhanden (mit Cooldown), sonst echter Absturz
   void _handlePotentialCrash() {
+    // Cooldown verhindert multi-frame Shield-Drain
+    if (_shieldCooldown > 0) return;
     final bool shieldAbsorbed = _upgMgr.absorbCrash();
     if (shieldAbsorbed) {
-      // Schild hat abgefangen: Rakete zurück zur Mitte katapultieren
-      _rocket.velocity.y = -200;
-      _rocket.velocity.x = -_rocket.velocity.x * 0.5;
-      _rocket.position.x = (_rocket.position.x).clamp(
-          _rocket.size.x, size.x - _rocket.size.x);
-      _rocket.position.y = (size.y - ScoreConstants.kCoinMinHeightPx - 50)
-          .clamp(0, size.y - 100);
+      _shieldCooldown = _kShieldCooldownDuration;
+      // Rakete zurück zur sicheren Position katapultieren
+      _rocket.velocity.y = -300;
+      _rocket.velocity.x = -_rocket.velocity.x * 0.6;
+      _rocket.position.x =
+          _rocket.position.x.clamp(_rocket.size.x, size.x - _rocket.size.x);
+      _rocket.position.y =
+          (size.y - ScoreConstants.kCoinMinHeightPx - 80).clamp(50, size.y - 150);
       onStateChange?.call();
     } else {
       _triggerCrash();
@@ -356,7 +380,9 @@ class RocketGame extends FlameGame
     _rocket.thrustMultiplier = _upgMgr.thrustMultiplier;
     _rocket.fuelBurnMultiplier = _upgMgr.fuelBurnMultiplier;
     _rocket.maxFuel = _upgMgr.maxFuel;
-    _rocket.fuel = _upgMgr.maxFuel + _upgMgr.bonusFuelOnStart;
+    // Bonus-Fuel additiv aber auf maxFuel*1.5 gedeckelt um Overflow zu verhindern
+    _rocket.fuel = (_upgMgr.maxFuel + _upgMgr.bonusFuelOnStart)
+        .clamp(0.0, _upgMgr.maxFuel * 1.5);
     _rocket.lateralMultiplier = _upgMgr.lateralMultiplier;
     _rocket.stabilizerMultiplier = _upgMgr.stabilizerMultiplier;
     _rocket.speedMultiplier = _upgMgr.speedMultiplier;
@@ -391,7 +417,10 @@ class RocketGame extends FlameGame
 
   @override
   void onDragStart(int pointerId, DragStartInfo info) {
-    if (phase == GamePhase.menu || phase == GamePhase.crashed) startGame();
+    // Spiel starten -- nur wenn noch nicht playing (verhindert Double-Start bei Multi-Touch)
+    if (phase == GamePhase.menu || phase == GamePhase.crashed) {
+      if (phase != GamePhase.playing) startGame();
+    }
     _activeTouches[pointerId] = info.eventPosition.global.x;
   }
 
