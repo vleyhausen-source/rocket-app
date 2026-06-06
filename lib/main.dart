@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:rocket_app/game/rocket_game.dart';
 import 'package:rocket_app/ui/game_screen.dart';
 
 void main() {
