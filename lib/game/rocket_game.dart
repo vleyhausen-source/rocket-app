@@ -2,31 +2,50 @@ import 'package:flame/events.dart';
 import 'package:flame/game.dart';
 import 'package:flutter/material.dart';
 import 'package:rocket_app/components/background_component.dart';
+import 'package:rocket_app/components/coin_component.dart';
 import 'package:rocket_app/components/rocket_component.dart';
-import 'package:rocket_app/game/game_constants.dart';
+import 'package:rocket_app/managers/score_manager.dart';
 
 /// Spielzustand-Enum für den gesamten Game-Loop
 enum GamePhase { menu, playing, crashed, paused }
 
-/// Hauptspiel-Klasse: koordiniert Physik, Touch und Kollision
-class RocketGame extends FlameGame with MultiTouchDragDetector, TapCallbacks {
+/// Hauptspiel-Klasse: koordiniert Physik, Touch, Coins und Scoring
+class RocketGame extends FlameGame
+    with MultiTouchDragDetector, TapCallbacks, HasCollisionDetection {
   // --- Komponenten ---
   late final BackgroundComponent _background;
   late final RocketComponent _rocket;
 
+  // --- Manager ---
+  final ScoreManager _scoreManager = ScoreManager.instance;
+  final CoinSpawner _coinSpawner = CoinSpawner();
+
+  // --- Coin-Tracking ---
+  final List<CoinComponent> _activeCoins = [];
+
   // --- Spielzustand ---
   GamePhase phase = GamePhase.menu;
-  int score = 0;
-  double altitude = 0.0;
-  double maxAltitude = 0.0;
 
   // --- Touch-Tracking ---
-  // Speichert aktive Touch-Points: pointerId -> x-Position
   final Map<int, double> _activeTouches = {};
 
   // --- Callbacks für UI ---
   VoidCallback? onCrash;
   VoidCallback? onStateChange;
+
+  // --- Getter für UI ---
+  int get score => _scoreManager.currentScore;
+  int get coinsThisRun => _scoreManager.coinsThisRun;
+  int get totalCoins => _scoreManager.totalCoins;
+  int get highscore => _scoreManager.highscore;
+  double get altitude => _scoreManager.maxAltitudePx;
+  bool get isNewHighscore => _scoreManager.isNewHighscore;
+  double get fuelPercent =>
+      (_rocket.fuel / 100.0).clamp(0.0, 1.0);
+  double get stratosphereSeconds => _scoreManager.stratosphereSeconds;
+  bool get isPlaying => phase == GamePhase.playing;
+  bool get isCrashed => phase == GamePhase.crashed;
+  bool get isMenu => phase == GamePhase.menu;
 
   @override
   Color backgroundColor() => const Color(0xFF050510);
@@ -35,22 +54,22 @@ class RocketGame extends FlameGame with MultiTouchDragDetector, TapCallbacks {
   Future<void> onLoad() async {
     await super.onLoad();
 
-    // Hintergrund als unterste Schicht
+    // Persistente Daten laden
+    await _scoreManager.load();
+
+    // Hintergrund
     _background = BackgroundComponent(screenSize: size);
     await add(_background);
 
-    // Rakete an Startposition
-    _rocket = RocketComponent(
-      initialPosition: _rocketStartPosition(),
-    );
+    // Rakete
+    _rocket = RocketComponent(initialPosition: _rocketStartPosition());
     await add(_rocket);
   }
 
-  /// Berechnet die Startposition der Rakete (Boden-Mitte)
   Vector2 _rocketStartPosition() {
     return Vector2(
       size.x / 2,
-      size.y - GameConstants.kGroundHeight - GameConstants.kLaunchHeightOffset,
+      size.y - ScoreConstants.kCoinMinHeightPx,
     );
   }
 
@@ -60,116 +79,156 @@ class RocketGame extends FlameGame with MultiTouchDragDetector, TapCallbacks {
 
     if (phase != GamePhase.playing) return;
 
-    // Touch-basierte Steuerung auf Rakete anwenden
     _applyTouchInput();
-
-    // Kollisionserkennung
+    _updateScoring(dt);
     _checkCollisions();
-
-    // Score & Höhe aktualisieren
-    _updateScore(dt);
-  }
-
-  /// Wertet aktive Touch-Points aus und steuert die Rakete
-  void _applyTouchInput() {
-    if (_activeTouches.isEmpty) {
-      // Kein Touch: kein Schub, keine Lenkung
-      _rocket.thrustActive = false;
-      _rocket.lateralInput = 0.0;
-      return;
-    }
-
-    // Schub ist aktiv sobald irgendein Finger gedrückt ist
-    _rocket.thrustActive = true;
-
-    // Lenkung: Durchschnittliche X-Position aller Finger bestimmt Richtung
-    final double screenMid = size.x / 2;
-    double totalX = 0.0;
-    for (final x in _activeTouches.values) {
-      totalX += x;
-    }
-    final double avgX = totalX / _activeTouches.length;
-
-    // Normalisierte Lenkung: -1.0 (links) bis +1.0 (rechts)
-    final double rawInput = (avgX - screenMid) / (screenMid);
-    _rocket.lateralInput = rawInput.clamp(-1.0, 1.0);
-  }
-
-  /// Prüft Boden- und Wandkollision
-  void _checkCollisions() {
-    final double rocketBottom = _rocket.position.y;
-    final double rocketLeft = _rocket.position.x - GameConstants.kRocketWidth / 2;
-    final double rocketRight = _rocket.position.x + GameConstants.kRocketWidth / 2;
-    final double groundY = size.y - GameConstants.kGroundHeight;
-
-    // --- Bodenkollision ---
-    if (rocketBottom >= groundY) {
-      _triggerCrash();
-      return;
-    }
-
-    // --- Linker Bildschirmrand ---
-    if (rocketLeft <= GameConstants.kWallMargin) {
-      _triggerCrash();
-      return;
-    }
-
-    // --- Rechter Bildschirmrand ---
-    if (rocketRight >= size.x - GameConstants.kWallMargin) {
-      _triggerCrash();
-      return;
-    }
-
-    // --- Oberer Bildschirmrand (Wrapping optional, hier: Absturz) ---
-    if (_rocket.position.y <= 0) {
-      // Oben herausfliegen: Geschwindigkeit deckeln, kein Absturz
-      _rocket.velocity.y = 0;
-      _rocket.position.y = 0;
-    }
-  }
-
-  /// Aktualisiert Höhe und Score
-  void _updateScore(double dt) {
-    final double groundY = size.y - GameConstants.kGroundHeight;
-    altitude = (groundY - _rocket.position.y).clamp(0.0, double.infinity);
-
-    if (altitude > maxAltitude) {
-      maxAltitude = altitude;
-    }
-
-    // Score = maximale Höhe (abgerundet)
-    score = maxAltitude.toInt();
     onStateChange?.call();
   }
 
-  /// Löst einen Absturz aus
-  void _triggerCrash() {
-    if (phase == GamePhase.crashed) return; // Doppel-Crash verhindern
+  // -----------------------------------------------------------------------
+  // SCORING
+  // -----------------------------------------------------------------------
+
+  void _updateScoring(double dt) {
+    // Aktuelle Höhe berechnen (Boden = 0, oben = hoch)
+    final double groundY = size.y - ScoreConstants.kCoinMinHeightPx;
+    final double currentAltitudePx =
+        (groundY - _rocket.position.y).clamp(0.0, double.infinity);
+
+    _scoreManager.update(dt, currentAltitudePx);
+  }
+
+  // -----------------------------------------------------------------------
+  // KOLLISIONSERKENNUNG (Boden/Wand manuell, Coins über Flame Collision)
+  // -----------------------------------------------------------------------
+
+  void _checkCollisions() {
+    final double rocketBottom = _rocket.position.y;
+    final double rocketLeft =
+        _rocket.position.x - _rocket.size.x / 2;
+    final double rocketRight =
+        _rocket.position.x + _rocket.size.x / 2;
+    final double groundY = size.y - ScoreConstants.kCoinMinHeightPx;
+
+    if (rocketBottom >= groundY) { _triggerCrash(); return; }
+    if (rocketLeft <= 0) { _triggerCrash(); return; }
+    if (rocketRight >= size.x) { _triggerCrash(); return; }
+
+    // Oberer Rand: sanft abprallen
+    if (_rocket.position.y <= 0) {
+      _rocket.velocity.y = 0;
+      _rocket.position.y = 0;
+    }
+
+    // Manuelle Coin-Kollision (schneller als Flame Broadphase für kleine Mengen)
+    _checkCoinCollisions();
+  }
+
+  void _checkCoinCollisions() {
+    // Raketen-Mittelpunkt für einfache Distanz-Prüfung
+    final double rx = _rocket.position.x;
+    final double ry = _rocket.position.y - _rocket.size.y / 2;
+    const double collectRadius =
+        CoinComponent.kCoinRadius + 20.0; // großzügiger Einsammelradius
+
+    for (final coin in List<CoinComponent>.from(_activeCoins)) {
+      final double dx = coin.position.x - rx;
+      final double dy = coin.position.y - ry;
+      final double dist = (dx * dx + dy * dy);
+      if (dist <= collectRadius * collectRadius) {
+        coin.collect();
+        _activeCoins.remove(coin);
+      }
+    }
+  }
+
+  // -----------------------------------------------------------------------
+  // COIN SPAWNING
+  // -----------------------------------------------------------------------
+
+  void _spawnCoins() {
+    // Alte Coins entfernen
+    for (final coin in List<CoinComponent>.from(_activeCoins)) {
+      coin.removeFromParent();
+    }
+    _activeCoins.clear();
+
+    // Neue Coins generieren
+    final spawnData = _coinSpawner.generateCoins(
+      screenWidth: size.x,
+      screenHeight: size.y,
+      groundHeight: ScoreConstants.kCoinMinHeightPx,
+    );
+
+    for (final data in spawnData) {
+      final coin = CoinComponent(
+        position: data.position,
+        value: data.value,
+        onCollected: (int value) {
+          _scoreManager.collectCoin(value);
+        },
+      );
+      _activeCoins.add(coin);
+      add(coin);
+    }
+  }
+
+  // -----------------------------------------------------------------------
+  // ABSTURZ
+  // -----------------------------------------------------------------------
+
+  Future<void> _triggerCrash() async {
+    if (phase == GamePhase.crashed) return;
 
     _rocket.state = RocketState.crashed;
     _rocket.thrustActive = false;
     _rocket.lateralInput = 0.0;
     _activeTouches.clear();
     phase = GamePhase.crashed;
+
+    // Runde beenden: Score + Coins gutschreiben und persistieren
+    await _scoreManager.endRun();
+
     onCrash?.call();
     onStateChange?.call();
   }
 
-  /// Startet oder neustartet das Spiel
-  void startGame() {
-    score = 0;
-    altitude = 0.0;
-    maxAltitude = 0.0;
+  // -----------------------------------------------------------------------
+  // SPIEL STARTEN / NEUSTARTEN
+  // -----------------------------------------------------------------------
+
+  Future<void> startGame() async {
+    _scoreManager.startRun();
     _activeTouches.clear();
     _rocket.reset(_rocketStartPosition());
     _rocket.launch();
+    _spawnCoins();
     phase = GamePhase.playing;
     onStateChange?.call();
   }
 
-  // =======================================================================
-  // TOUCH-EINGABE: MultiTouchDragDetector
-  // =======================================================================
+  // -----------------------------------------------------------------------
+  // TOUCH-EINGABE
+  // -----------------------------------------------------------------------
+
+  void _applyTouchInput() {
+    if (_activeTouches.isEmpty) {
+      _rocket.thrustActive = false;
+      _rocket.lateralInput = 0.0;
+      return;
+    }
+
+    _rocket.thrustActive = true;
+
+    final double screenMid = size.x / 2;
+    double totalX = 0.0;
+    for (final x in _activeTouches.values) {
+      totalX += x;
+    }
+    final double avgX = totalX / _activeTouches.length;
+    final double rawInput = (avgX - screenMid) / screenMid;
+    _rocket.lateralInput = rawInput.clamp(-1.0, 1.0);
+  }
 
   @override
   void onDragStart(int pointerId, DragStartInfo info) {
@@ -194,7 +253,6 @@ class RocketGame extends FlameGame with MultiTouchDragDetector, TapCallbacks {
     _activeTouches.remove(pointerId);
   }
 
-  // Tap startet ebenfalls das Spiel (für Kurz-Taps)
   @override
   void onTapDown(TapDownEvent event) {
     if (phase == GamePhase.menu || phase == GamePhase.crashed) {
@@ -212,11 +270,4 @@ class RocketGame extends FlameGame with MultiTouchDragDetector, TapCallbacks {
   void onTapCancel(TapCancelEvent event) {
     _activeTouches.remove(event.pointerId);
   }
-
-  // --- Getter für UI ---
-  double get fuelPercent =>
-      (_rocket.fuel / GameConstants.kInitialFuel).clamp(0.0, 1.0);
-  bool get isPlaying => phase == GamePhase.playing;
-  bool get isCrashed => phase == GamePhase.crashed;
-  bool get isMenu => phase == GamePhase.menu;
 }

@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:rocket_app/game/rocket_game.dart';
+import 'package:rocket_app/managers/score_manager.dart';
 
-/// HUD (Head-Up Display) - zeigt Score, Höhe, Kraftstoff
+/// HUD (Head-Up Display) - Score, Höhe, Kraftstoff, Coins
 class HudWidget extends StatelessWidget {
   final RocketGame game;
 
@@ -9,6 +10,9 @@ class HudWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final bool inStratosphere =
+        game.altitude >= ScoreConstants.kStratosphereThresholdPx;
+
     return SafeArea(
       child: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -22,16 +26,59 @@ class HudWidget extends StatelessWidget {
               value: game.score.toString(),
               color: Colors.amber,
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 6),
+            // Highscore
+            _HudLabel(
+              icon: Icons.emoji_events,
+              label: 'Best',
+              value: game.highscore.toString(),
+              color: Colors.orangeAccent,
+            ),
+            const SizedBox(height: 6),
             // Höhe
             _HudLabel(
               icon: Icons.height,
               label: 'Höhe',
-              value: '${game.altitude.toStringAsFixed(0)} px',
+              value: '${(game.altitude / ScoreConstants.kPixelsPerMeter).toStringAsFixed(1)} m',
               color: Colors.lightBlueAccent,
             ),
+            const SizedBox(height: 6),
+            // Coins diese Runde
+            _HudLabel(
+              icon: Icons.monetization_on,
+              label: 'Coins',
+              value: game.coinsThisRun.toString(),
+              color: Colors.yellowAccent,
+            ),
+            // Stratosphären-Indikator
+            if (inStratosphere) ...[
+              const SizedBox(height: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Colors.deepPurple.withValues(alpha: 0.7),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.purpleAccent, width: 1),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.rocket_launch, color: Colors.purpleAccent, size: 14),
+                    const SizedBox(width: 4),
+                    Text(
+                      'STRATOSPHÄRE  +${ScoreConstants.kStratosphereBonusPerSecond.toInt()}/s',
+                      style: const TextStyle(
+                        color: Colors.purpleAccent,
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
             const SizedBox(height: 12),
-            // Kraftstoff-Anzeige
+            // Kraftstoff
             _FuelBar(fuelPercent: game.fuelPercent),
           ],
         ),
@@ -40,7 +87,6 @@ class HudWidget extends StatelessWidget {
   }
 }
 
-/// Einzelnes HUD-Label mit Icon
 class _HudLabel extends StatelessWidget {
   final IconData icon;
   final String label;
@@ -59,21 +105,17 @@ class _HudLabel extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(icon, color: color, size: 18),
-        const SizedBox(width: 6),
+        Icon(icon, color: color, size: 16),
+        const SizedBox(width: 5),
         Text(
           '$label: ',
-          style: const TextStyle(
-            color: Colors.white54,
-            fontSize: 14,
-            fontFamily: 'monospace',
-          ),
+          style: const TextStyle(color: Colors.white54, fontSize: 13, fontFamily: 'monospace'),
         ),
         Text(
           value,
           style: TextStyle(
             color: color,
-            fontSize: 16,
+            fontSize: 15,
             fontWeight: FontWeight.bold,
             fontFamily: 'monospace',
           ),
@@ -83,10 +125,8 @@ class _HudLabel extends StatelessWidget {
   }
 }
 
-/// Kraftstoff-Balken
 class _FuelBar extends StatelessWidget {
   final double fuelPercent;
-
   const _FuelBar({required this.fuelPercent});
 
   @override
@@ -96,36 +136,28 @@ class _FuelBar extends StatelessWidget {
         : fuelPercent > 0.1
             ? Colors.orange
             : Colors.red;
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
           children: [
-            const Icon(Icons.local_fire_department, color: Colors.orange, size: 18),
+            const Icon(Icons.local_fire_department, color: Colors.orange, size: 16),
+            const SizedBox(width: 5),
+            const Text('Kraftstoff', style: TextStyle(color: Colors.white54, fontSize: 13)),
             const SizedBox(width: 6),
-            const Text(
-              'Kraftstoff',
-              style: TextStyle(color: Colors.white54, fontSize: 14),
-            ),
-            const SizedBox(width: 8),
             Text(
               '${(fuelPercent * 100).toStringAsFixed(0)}%',
-              style: TextStyle(
-                color: barColor,
-                fontSize: 14,
-                fontWeight: FontWeight.bold,
-              ),
+              style: TextStyle(color: barColor, fontSize: 13, fontWeight: FontWeight.bold),
             ),
           ],
         ),
         const SizedBox(height: 4),
         Container(
-          width: 160,
-          height: 10,
+          width: 150,
+          height: 8,
           decoration: BoxDecoration(
             color: Colors.white12,
-            borderRadius: BorderRadius.circular(5),
+            borderRadius: BorderRadius.circular(4),
           ),
           child: FractionallySizedBox(
             alignment: Alignment.centerLeft,
@@ -133,7 +165,7 @@ class _FuelBar extends StatelessWidget {
             child: Container(
               decoration: BoxDecoration(
                 color: barColor,
-                borderRadius: BorderRadius.circular(5),
+                borderRadius: BorderRadius.circular(4),
               ),
             ),
           ),
@@ -143,11 +175,15 @@ class _FuelBar extends StatelessWidget {
   }
 }
 
-/// Start-Overlay (Menü-Zustand)
+// ==========================================================================
+// START-OVERLAY
+// ==========================================================================
+
 class StartOverlayWidget extends StatelessWidget {
+  final RocketGame game;
   final VoidCallback onStart;
 
-  const StartOverlayWidget({super.key, required this.onStart});
+  const StartOverlayWidget({super.key, required this.game, required this.onStart});
 
   @override
   Widget build(BuildContext context) {
@@ -155,10 +191,7 @@ class StartOverlayWidget extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Text(
-            '🚀',
-            style: TextStyle(fontSize: 72),
-          ),
+          const Text('🚀', style: TextStyle(fontSize: 72)),
           const SizedBox(height: 16),
           const Text(
             'ROCKET',
@@ -169,17 +202,38 @@ class StartOverlayWidget extends StatelessWidget {
               letterSpacing: 8,
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 6),
+          // Highscore anzeigen wenn vorhanden
+          if (game.highscore > 0)
+            Text(
+              'Highscore: ${game.highscore}',
+              style: const TextStyle(color: Colors.amber, fontSize: 18),
+            ),
+          if (game.totalCoins > 0) ...[
+            const SizedBox(height: 4),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.monetization_on, color: Colors.yellowAccent, size: 18),
+                const SizedBox(width: 4),
+                Text(
+                  '${game.totalCoins} Coins',
+                  style: const TextStyle(color: Colors.yellowAccent, fontSize: 16),
+                ),
+              ],
+            ),
+          ],
+          const SizedBox(height: 20),
           const Text(
-            'Tippe oder halte zum Starten',
-            style: TextStyle(color: Colors.white54, fontSize: 16),
+            'Halten = Schub  |  Links/Rechts = Lenken',
+            style: TextStyle(color: Colors.white54, fontSize: 14),
           ),
           const SizedBox(height: 4),
-          const Text(
-            'Links/Rechts lenken mit Touch-Position',
-            style: TextStyle(color: Colors.white38, fontSize: 13),
+          Text(
+            'Stratosphäre ab ${(ScoreConstants.kStratosphereThresholdPx / ScoreConstants.kPixelsPerMeter).toStringAsFixed(0)} m → +${ScoreConstants.kStratosphereBonusPerSecond.toInt()} Punkte/s',
+            style: const TextStyle(color: Colors.white38, fontSize: 12),
           ),
-          const SizedBox(height: 32),
+          const SizedBox(height: 28),
           ElevatedButton(
             onPressed: onStart,
             style: ElevatedButton.styleFrom(
@@ -195,64 +249,145 @@ class StartOverlayWidget extends StatelessWidget {
   }
 }
 
-/// Crash-Overlay
+// ==========================================================================
+// CRASH-OVERLAY mit vollständiger Score-Auswertung
+// ==========================================================================
+
 class CrashOverlayWidget extends StatelessWidget {
-  final int score;
-  final double maxAltitude;
+  final RocketGame game;
   final VoidCallback onRestart;
 
-  const CrashOverlayWidget({
-    super.key,
-    required this.score,
-    required this.maxAltitude,
-    required this.onRestart,
-  });
+  const CrashOverlayWidget({super.key, required this.game, required this.onRestart});
 
   @override
   Widget build(BuildContext context) {
+    final sm = ScoreManager.instance;
+
     return Center(
       child: Container(
-        margin: const EdgeInsets.all(32),
+        margin: const EdgeInsets.all(28),
         padding: const EdgeInsets.all(24),
         decoration: BoxDecoration(
           color: Colors.black87,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Colors.red.shade700, width: 2),
+          border: Border.all(
+            color: game.isNewHighscore ? Colors.amber : Colors.red.shade700,
+            width: 2,
+          ),
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text('💥', style: TextStyle(fontSize: 48)),
-            const SizedBox(height: 12),
-            const Text(
-              'ABSTURZ',
+            // Titel
+            Text(
+              game.isNewHighscore ? '🏆 NEUER REKORD!' : '💥 ABSTURZ',
               style: TextStyle(
-                color: Colors.red,
-                fontSize: 32,
+                color: game.isNewHighscore ? Colors.amber : Colors.red,
+                fontSize: 28,
                 fontWeight: FontWeight.bold,
-                letterSpacing: 4,
+                letterSpacing: 3,
               ),
             ),
             const SizedBox(height: 20),
-            _ResultRow(label: 'Score', value: score.toString(), icon: Icons.star),
-            const SizedBox(height: 8),
-            _ResultRow(
-              label: 'Max. Höhe',
-              value: '${maxAltitude.toStringAsFixed(0)} px',
+
+            // Score-Aufschlüsselung
+            _ScoreRow(
+              label: 'Höhe',
+              value: '${sm.altitudeScore} Punkte',
+              sub: '${sm.maxAltitudeMeters} m × 1',
               icon: Icons.height,
+              color: Colors.lightBlueAccent,
             ),
+            const SizedBox(height: 8),
+            _ScoreRow(
+              label: 'Stratosphäre',
+              value: '${sm.stratosphereBonus} Punkte',
+              sub: '${sm.stratosphereSeconds.toStringAsFixed(1)} s × 10',
+              icon: Icons.rocket_launch,
+              color: Colors.purpleAccent,
+            ),
+            const SizedBox(height: 8),
+            _ScoreRow(
+              label: 'Coins',
+              value: '${sm.coinBonus} Punkte',
+              sub: '${sm.coinsThisRun} × 5',
+              icon: Icons.monetization_on,
+              color: Colors.yellowAccent,
+            ),
+
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 10),
+              child: Divider(color: Colors.white24),
+            ),
+
+            // Gesamtscore
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  'GESAMT',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 2,
+                  ),
+                ),
+                Text(
+                  '${sm.totalScore}',
+                  style: const TextStyle(
+                    color: Colors.amber,
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 8),
+
+            // Highscore
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text('Highscore', style: TextStyle(color: Colors.white38, fontSize: 14)),
+                Text(
+                  '${game.highscore}',
+                  style: const TextStyle(color: Colors.orangeAccent, fontSize: 16),
+                ),
+              ],
+            ),
+
+            // Gesamt-Coins
+            const SizedBox(height: 4),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Row(
+                  children: [
+                    Icon(Icons.monetization_on, color: Colors.yellowAccent, size: 16),
+                    SizedBox(width: 4),
+                    Text('Gesamt Coins', style: TextStyle(color: Colors.white38, fontSize: 14)),
+                  ],
+                ),
+                Text(
+                  '${game.totalCoins}',
+                  style: const TextStyle(color: Colors.yellowAccent, fontSize: 16, fontWeight: FontWeight.bold),
+                ),
+              ],
+            ),
+
             const SizedBox(height: 24),
+
             ElevatedButton(
               onPressed: onRestart,
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.deepPurple,
                 foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 14),
+                minimumSize: const Size(180, 48),
               ),
-              child: const Text(
-                'NOCHMAL',
-                style: TextStyle(fontSize: 16, letterSpacing: 3),
-              ),
+              child: const Text('NOCHMAL', style: TextStyle(fontSize: 16, letterSpacing: 3)),
             ),
           ],
         ),
@@ -261,24 +396,40 @@ class CrashOverlayWidget extends StatelessWidget {
   }
 }
 
-class _ResultRow extends StatelessWidget {
+class _ScoreRow extends StatelessWidget {
   final String label;
   final String value;
+  final String sub;
   final IconData icon;
+  final Color color;
 
-  const _ResultRow({required this.label, required this.value, required this.icon});
+  const _ScoreRow({
+    required this.label,
+    required this.value,
+    required this.sub,
+    required this.icon,
+    required this.color,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Row(
-      mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(icon, color: Colors.amber, size: 20),
+        Icon(icon, color: color, size: 18),
         const SizedBox(width: 8),
-        Text('$label: ', style: const TextStyle(color: Colors.white54, fontSize: 16)),
-        Text(value,
-            style: const TextStyle(
-                color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(label, style: const TextStyle(color: Colors.white70, fontSize: 13)),
+              Text(sub, style: const TextStyle(color: Colors.white38, fontSize: 11)),
+            ],
+          ),
+        ),
+        Text(
+          value,
+          style: TextStyle(color: color, fontSize: 15, fontWeight: FontWeight.bold),
+        ),
       ],
     );
   }

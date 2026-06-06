@@ -1,6 +1,6 @@
 import 'dart:math';
+import 'package:flame/collisions.dart';
 import 'package:flame/components.dart';
-
 import 'package:flutter/material.dart';
 import 'package:rocket_app/game/game_constants.dart';
 
@@ -8,7 +8,7 @@ import 'package:rocket_app/game/game_constants.dart';
 enum RocketState { idle, flying, crashed }
 
 /// Raketen-Komponente mit vollständiger Physik-Simulation
-class RocketComponent extends PositionComponent {
+class RocketComponent extends PositionComponent with CollisionCallbacks {
   // --- Physikalische Zustandsvariablen ---
 
   /// Aktuelle Geschwindigkeit in px/s (x=horizontal, y=vertikal)
@@ -51,6 +51,11 @@ class RocketComponent extends PositionComponent {
   @override
   Future<void> onLoad() async {
     await super.onLoad();
+    // Hitbox für Coin-Kollision (kleineres Rechteck = fairer Treffer)
+    add(RectangleHitbox(
+      size: Vector2(size.x * 0.5, size.y * 0.6),
+      position: Vector2(size.x * 0.25, size.y * 0.2),
+    ));
   }
 
   /// Setzt die Rakete auf Startposition zurück

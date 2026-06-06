@@ -1,0 +1,154 @@
+import 'dart:math';
+import 'package:flame/collisions.dart';
+import 'package:flame/components.dart';
+import 'package:flutter/material.dart';
+import 'package:rocket_app/managers/score_manager.dart';
+
+/// Callback wenn ein Coin eingesammelt wird
+typedef CoinCollectedCallback = void Function(int value);
+
+/// Ein Coin im Spielfeld
+class CoinComponent extends PositionComponent with CollisionCallbacks {
+  /// Wert dieses Coins (1 = normal, 2 = doppelt, 3 = dreifach)
+  final int value;
+
+  /// Callback wenn eingesammelt
+  final CoinCollectedCallback? onCollected;
+
+  // --- Animation ---
+  double _pulseTimer = 0.0;
+  bool _collected = false;
+
+  // --- Farben nach Wert ---
+  late final Paint _coinPaint;
+  late final Paint _glowPaint;
+
+  static const double kCoinRadius = 12.0;
+
+  CoinComponent({
+    required Vector2 position,
+    required this.value,
+    this.onCollected,
+  }) : super(
+          position: position,
+          size: Vector2.all(kCoinRadius * 2),
+          anchor: Anchor.center,
+        );
+
+  @override
+  Future<void> onLoad() async {
+    await super.onLoad();
+
+    // Farbe nach Wert: 1=Gold, 2=Silber-Blau, 3=Lila
+    final Color baseColor = switch (value) {
+      1 => const Color(0xFFFFD700),
+      2 => const Color(0xFF4FC3F7),
+      _ => const Color(0xFFCE93D8),
+    };
+
+    _coinPaint = Paint()..color = baseColor;
+    _glowPaint = Paint()
+      ..color = baseColor.withValues(alpha: 0.35)
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8);
+    // Kollisionsbox (Kreis)
+    add(CircleHitbox(radius: kCoinRadius));
+  }
+
+  @override
+  void update(double dt) {
+    super.update(dt);
+    if (_collected) return;
+    // Leichtes Pulsieren (Scale-Animation via Timer)
+    _pulseTimer += dt * 2.5;
+  }
+
+  @override
+  void render(Canvas canvas) {
+    if (_collected) return;
+
+    final double pulse = 1.0 + sin(_pulseTimer) * 0.08;
+    final double r = kCoinRadius * pulse;
+    const Offset center = Offset(kCoinRadius, kCoinRadius);
+
+    // Leuchten (Glow)
+    canvas.drawCircle(center, r + 4, _glowPaint);
+
+    // Hauptkörper
+    canvas.drawCircle(center, r, _coinPaint);
+
+    // Symbol: Münzen-Zeichen oder Wert
+    final TextPainter tp = TextPainter(
+      text: TextSpan(
+        text: value == 1 ? '¢' : value == 2 ? '©' : '★',
+        style: TextStyle(
+          color: Colors.white.withValues(alpha: 0.9),
+          fontSize: r * 1.1,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+      textDirection: TextDirection.ltr,
+    )..layout();
+    tp.paint(
+      canvas,
+      Offset(center.dx - tp.width / 2, center.dy - tp.height / 2),
+    );
+  }
+
+  /// Wird aufgerufen wenn die Rakete den Coin berührt
+  void collect() {
+    if (_collected) return;
+    _collected = true;
+    onCollected?.call(value);
+    removeFromParent();
+  }
+}
+
+/// Verwaltet das Spawnen und Zurücksetzen aller Coins
+class CoinSpawner {
+  final Random _random = Random();
+
+  /// Erzeugt [count] Coins zufällig verteilt im Spielfeld
+  /// Höhere Coins haben mehr Wert
+  List<CoinSpawnData> generateCoins({
+    required double screenWidth,
+    required double screenHeight,
+    required double groundHeight,
+    int count = ScoreConstants.kCoinsPerRun,
+  }) {
+    final List<CoinSpawnData> result = [];
+    final double playableHeight = screenHeight - groundHeight;
+
+    for (int i = 0; i < count; i++) {
+      // Zufällige Höhe (invertiert: 0 = Boden, playableHeight = oben)
+      final double heightFromGround =
+          ScoreConstants.kCoinMinHeightPx +
+          _random.nextDouble() * (playableHeight - ScoreConstants.kCoinMinHeightPx);
+
+      // Y-Position im Flame-Koordinatensystem (Y=0 oben)
+      final double y = screenHeight - groundHeight - heightFromGround;
+
+      // X-Position: zufällig, 10% Rand-Abstand
+      final double x =
+          screenWidth * 0.1 + _random.nextDouble() * screenWidth * 0.8;
+
+      // Wert abhängig von Höhe
+      final int coinValue = switch (heightFromGround) {
+        <= ScoreConstants.kZone1MaxPx => 1,
+        <= ScoreConstants.kZone2MaxPx => 2,
+        _ => 3,
+      };
+
+      result.add(CoinSpawnData(position: Vector2(x, y), value: coinValue));
+    }
+
+    return result;
+  }
+}
+
+/// Datentransfer-Objekt für Coin-Spawn-Informationen
+class CoinSpawnData {
+  final Vector2 position;
+  final int value;
+
+  const CoinSpawnData({required this.position, required this.value});
+}

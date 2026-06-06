@@ -12,26 +12,17 @@ class GameScreen extends StatefulWidget {
 }
 
 class _GameScreenState extends State<GameScreen> {
-  // Spielinstanz wird einmalig erstellt und bleibt bestehen
   late final RocketGame _game;
 
   @override
   void initState() {
     super.initState();
     _game = RocketGame();
-
-    // Callbacks registrieren: Spiel informiert UI über Zustandsänderungen
-    _game.onStateChange = _onGameStateChange;
-    _game.onCrash = _onCrash;
+    _game.onStateChange = _refresh;
+    _game.onCrash = _refresh;
   }
 
-  /// Wird bei jedem relevanten Spielzustandswechsel aufgerufen
-  void _onGameStateChange() {
-    if (mounted) setState(() {});
-  }
-
-  /// Wird beim Absturz aufgerufen
-  void _onCrash() {
+  void _refresh() {
     if (mounted) setState(() {});
   }
 
@@ -40,34 +31,24 @@ class _GameScreenState extends State<GameScreen> {
     return Scaffold(
       body: Stack(
         children: [
-          // --- Flame Game (Hintergrund) ---
+          // Flame-Canvas
           GameWidget(game: _game),
 
-          // --- HUD (nur beim Spielen) ---
-          if (_game.isPlaying)
-            StatefulBuilder(
-              builder: (context, refresh) {
-                // HUD aktualisiert sich über onStateChange-Callback
-                return HudWidget(game: _game);
-              },
-            ),
+          // HUD (nur beim Spielen)
+          if (_game.isPlaying) HudWidget(game: _game),
 
-          // --- Start-Overlay ---
+          // Start-Overlay
           if (_game.isMenu)
             StartOverlayWidget(
-              onStart: () {
-                _game.startGame();
-              },
+              game: _game,
+              onStart: () => _game.startGame(),
             ),
 
-          // --- Crash-Overlay ---
+          // Crash-Overlay
           if (_game.isCrashed)
             CrashOverlayWidget(
-              score: _game.score,
-              maxAltitude: _game.maxAltitude,
-              onRestart: () {
-                _game.startGame();
-              },
+              game: _game,
+              onRestart: () => _game.startGame(),
             ),
         ],
       ),
