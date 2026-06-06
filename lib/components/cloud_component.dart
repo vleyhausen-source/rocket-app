@@ -12,14 +12,19 @@ class CloudComponent extends PositionComponent {
   // --- Bewegung ---
   final double _driftSpeed; // horizontale Drift in px/s
 
+  // --- Bildschirmbreite für Wrapping (kein Parent-Cast nötig) ---
+  final double _screenWidth;
+
   CloudComponent._({
     required Vector2 position,
     required Vector2 size,
     required List<_CloudPuff> puffs,
     required double opacity,
     required double driftSpeed,
+    required double screenWidth,
   })  : _puffs = puffs,
         _driftSpeed = driftSpeed,
+        _screenWidth = screenWidth,
         _cloudPaint = Paint()
           ..color = Colors.white.withValues(alpha: opacity),
         super(position: position, size: size);
@@ -30,6 +35,7 @@ class CloudComponent extends PositionComponent {
     required double minY,
     required double maxY,
   }) {
+    // screenWidth wird direkt gespeichert – kein Parent-Cast beim Wrapping
     // Zufällige Größe
     final double baseRadius = rnd.nextDouble() * 28 + 18;
     final int puffCount = rnd.nextInt(3) + 3;
@@ -54,6 +60,7 @@ class CloudComponent extends PositionComponent {
       puffs: puffs,
       opacity: opacity,
       driftSpeed: drift,
+      screenWidth: screenWidth,
     );
   }
 
@@ -62,11 +69,11 @@ class CloudComponent extends PositionComponent {
     super.update(dt);
     position.x += _driftSpeed * dt;
 
-    // Bildschirm-Wrapping
-    if (position.x > (parent as PositionComponent).size.x + size.x) {
+    // Bildschirm-Wrapping (nutzt gespeicherte _screenWidth, kein Parent-Cast)
+    if (position.x > _screenWidth + size.x) {
       position.x = -size.x;
     } else if (position.x < -size.x) {
-      position.x = (parent as PositionComponent).size.x + size.x;
+      position.x = _screenWidth + size.x;
     }
   }
 
@@ -93,6 +100,7 @@ class _CloudPuff {
 class BirdComponent extends PositionComponent {
   final double _speed;
   final bool _facingRight;
+  final double _screenWidth; // Bildschirmbreite für Ausschuss-Erkennung
   double _wingTimer = 0.0;
   final Paint _birdPaint = Paint()
     ..color = const Color(0xFF37474F)
@@ -103,8 +111,10 @@ class BirdComponent extends PositionComponent {
     required Vector2 position,
     required double speed,
     required bool facingRight,
+    required double screenWidth,
   })  : _speed = speed,
         _facingRight = facingRight,
+        _screenWidth = screenWidth,
         super(position: position, size: Vector2(20, 10));
 
   factory BirdComponent.random({
@@ -121,6 +131,7 @@ class BirdComponent extends PositionComponent {
       position: Vector2(x, y),
       speed: speed,
       facingRight: right,
+      screenWidth: screenWidth,
     );
   }
 
@@ -132,9 +143,8 @@ class BirdComponent extends PositionComponent {
     // Horizontal fliegen
     position.x += (_facingRight ? _speed : -_speed) * dt;
 
-    // Aus dem Bild verschwunden -> entfernen
-    final double sw = (parent as PositionComponent).size.x;
-    if ((_facingRight && position.x > sw + 50) ||
+    // Aus dem Bild verschwunden -> entfernen (nutzt gespeicherte _screenWidth)
+    if ((_facingRight && position.x > _screenWidth + 50) ||
         (!_facingRight && position.x < -50)) {
       removeFromParent();
     }
