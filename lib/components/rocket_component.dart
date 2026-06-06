@@ -26,6 +26,29 @@ class RocketComponent extends PositionComponent with CollisionCallbacks {
   /// Aktueller Kraftstoff
   double fuel = GameConstants.kInitialFuel;
 
+  /// Maximaler Kraftstoff (durch Tank-Upgrade veränderlich)
+  double maxFuel = GameConstants.kInitialFuel;
+
+  // --- Upgrade-Multiplikatoren ---
+
+  /// Schub-Multiplikator (thrustBoost-Upgrade)
+  double thrustMultiplier = 1.0;
+
+  /// Kraftstoffverbrauch-Multiplikator (fuelEfficiency-Upgrade)
+  double fuelBurnMultiplier = 1.0;
+
+  /// Laterale Steuerungsstärke (lateralControl-Upgrade)
+  double lateralMultiplier = 1.0;
+
+  /// Rückstellgeschwindigkeit (stabilizer-Upgrade)
+  double stabilizerMultiplier = 1.0;
+
+  /// Maximalgeschwindigkeit-Multiplikator (aerodynamics-Upgrade)
+  double speedMultiplier = 1.0;
+
+  /// Externer Schub-Multiplikator (Booster-Spezial-Upgrade)
+  double externalThrustMultiplier = 1.0;
+
   /// Aktueller Zustand der Rakete
   RocketState state = RocketState.idle;
 
@@ -63,10 +86,11 @@ class RocketComponent extends PositionComponent with CollisionCallbacks {
     position = startPosition;
     velocity = Vector2.zero();
     tiltDegrees = 0.0;
-    fuel = GameConstants.kInitialFuel;
+    fuel = maxFuel;
     state = RocketState.idle;
     thrustActive = false;
     lateralInput = 0.0;
+    externalThrustMultiplier = 1.0;
   }
 
   /// Startet den Flug
@@ -96,46 +120,51 @@ class RocketComponent extends PositionComponent with CollisionCallbacks {
     const double ppm = GameConstants.kPixelsPerMeter;
 
     // --- Schwerkraft ---
-    // Positives Y = nach unten in Flame
     velocity.y += GameConstants.kGravity * ppm * dt;
 
-    // --- Schub ---
+    // --- Schub (mit Upgrade-Multiplikatoren) ---
     if (thrustActive && fuel > 0) {
-      // Schub entgegen der Schwerkraft + Neigungskomponente
       final double tiltRad = tiltDegrees * (pi / 180.0);
-    const double thrustForce = GameConstants.kMaxThrust * GameConstants.kPixelsPerMeter;
+      const double baseForce = GameConstants.kMaxThrust * ppm;
+      final double thrustForce =
+          baseForce * thrustMultiplier * externalThrustMultiplier;
 
-      // Vertikaler Schub (nach oben = negatives Y)
       velocity.y -= thrustForce * cos(tiltRad) * dt;
-
-      // Horizontaler Schub durch Neigung
       velocity.x += thrustForce * sin(tiltRad) * dt;
 
-      // Kraftstoff verbrauchen
-      fuel -= GameConstants.kFuelBurnRate * dt;
-      fuel = fuel.clamp(0.0, GameConstants.kInitialFuel);
+      // Kraftstoffverbrauch (mit Effizienz-Upgrade)
+      fuel -= GameConstants.kFuelBurnRate * fuelBurnMultiplier * dt;
+      fuel = fuel.clamp(0.0, maxFuel);
     }
 
-    // --- Laterale Steuerung (Neigung anpassen) ---
+    // --- Laterale Steuerung (mit Kontroll-Upgrade) ---
+    final double effectiveLateral =
+        GameConstants.kLateralThrust * lateralMultiplier;
+
     if (lateralInput != 0.0) {
       tiltDegrees += lateralInput * GameConstants.kTiltSpeed * dt;
       tiltDegrees =
           tiltDegrees.clamp(-GameConstants.kMaxTiltDegrees, GameConstants.kMaxTiltDegrees);
     } else {
-      // Neigung langsam zurück zur Mitte
+      // Stabilisator: schnellere Rückkehr zur Mitte
       if (tiltDegrees.abs() > 0.5) {
-        tiltDegrees -= tiltDegrees.sign * GameConstants.kTiltSpeed * 0.3 * dt;
+        tiltDegrees -=
+            tiltDegrees.sign * GameConstants.kTiltSpeed * 0.3 * stabilizerMultiplier * dt;
       } else {
         tiltDegrees = 0.0;
       }
     }
 
+    // Laterale Kraft auch auf Horizontalgeschwindigkeit
+    velocity.x += lateralInput * effectiveLateral * dt;
+
     // --- Luftwiderstand ---
     velocity.x *= pow(GameConstants.kDragFactor, dt * 60).toDouble();
 
-    // --- Geschwindigkeit begrenzen ---
-    velocity.x = velocity.x.clamp(
-        -GameConstants.kMaxHorizontalSpeed, GameConstants.kMaxHorizontalSpeed);
+    // --- Geschwindigkeit begrenzen (mit Aerodynamik-Upgrade) ---
+    final double maxH =
+        GameConstants.kMaxHorizontalSpeed * speedMultiplier;
+    velocity.x = velocity.x.clamp(-maxH, maxH);
     velocity.y =
         velocity.y.clamp(-GameConstants.kMaxFallSpeed, GameConstants.kMaxFallSpeed);
 
@@ -143,7 +172,7 @@ class RocketComponent extends PositionComponent with CollisionCallbacks {
     position.x += velocity.x * dt;
     position.y += velocity.y * dt;
 
-    // --- Rotation setzen (visuelle Neigung) ---
+    // --- Rotation (visuelle Neigung) ---
     angle = tiltDegrees * (pi / 180.0);
   }
 
