@@ -1,19 +1,32 @@
 import 'dart:math';
 import 'package:flame/components.dart';
 import 'package:flutter/material.dart';
+import 'package:rocket_app/game/atmosphere_zone.dart';
 import 'package:rocket_app/game/game_constants.dart';
 
-/// Sternenhimmel-Hintergrund mit parallax-ähnlichem Effekt
+/// Dynamischer Hintergrund mit Zonen-basiertem Atmosphären-System
 class BackgroundComponent extends PositionComponent {
+  // --- Sterne ---
   final List<_Star> _stars = [];
-  final Random _random = Random(42); // Fester Seed für konsistente Sterne
+  final Random _rnd = Random(42);
 
-  // --- Farbpalette ---
-  final Paint _skyPaint = Paint()..color = const Color(0xFF050510);
+  // --- Aktueller Atmosphären-Zustand ---
+  double _altitudeM = 0.0;
+  AtmosphereZone _currentZone = AtmosphereZones.zone1Ground;
+
+  // --- Boden ---
   final Paint _groundPaint = Paint()..color = const Color(0xFF1A3A1A);
   final Paint _groundLinePaint = Paint()
     ..color = const Color(0xFF2E7D32)
     ..strokeWidth = 2.0;
+  final Paint _padPaint = Paint()..color = const Color(0xFF546E7A);
+  final Paint _padLightPaint = Paint()..color = const Color(0xFFFFCC02);
+
+  // --- Zone-Label ---
+  String _zoneLabelText = '';
+  double _zoneLabelOpacity = 0.0; // Einblend-Animation
+  double _zoneLabelTimer = 0.0;
+  static const double kLabelDuration = 3.0; // Sekunden sichtbar
 
   BackgroundComponent({required Vector2 screenSize})
       : super(size: screenSize, position: Vector2.zero());
@@ -24,84 +37,162 @@ class BackgroundComponent extends PositionComponent {
     _generateStars();
   }
 
-  /// Erzeugt zufällige Sterne
   void _generateStars() {
-    const int starCount = 120;
-    for (int i = 0; i < starCount; i++) {
+    // 200 Sterne für dichte Weltraumatmosphäre
+    for (int i = 0; i < 200; i++) {
       _stars.add(_Star(
-        x: _random.nextDouble() * size.x,
-        y: _random.nextDouble() * (size.y - GameConstants.kGroundHeight),
-        radius: _random.nextDouble() * 1.8 + 0.4,
-        brightness: _random.nextDouble() * 0.7 + 0.3,
+        x: _rnd.nextDouble() * size.x,
+        y: _rnd.nextDouble() * (size.y - GameConstants.kGroundHeight),
+        radius: _rnd.nextDouble() * 1.8 + 0.3,
+        brightness: _rnd.nextDouble() * 0.8 + 0.2,
+        twinkleSpeed: _rnd.nextDouble() * 2.0 + 0.5,
+        twinkleOffset: _rnd.nextDouble() * pi * 2,
       ));
+    }
+  }
+
+  /// Wird vom RocketGame pro Frame aufgerufen
+  void updateAtmosphere(double altitudeM) {
+    final AtmosphereZone newZone = AtmosphereZones.forAltitude(altitudeM);
+
+    // Zonenwechsel erkennen und Label einblenden
+    if (newZone.name != _currentZone.name) {
+      _currentZone = newZone;
+      _zoneLabelText = newZone.name.toUpperCase();
+      _zoneLabelOpacity = 1.0;
+      _zoneLabelTimer = kLabelDuration;
+    }
+
+    _altitudeM = altitudeM;
+  }
+
+  @override
+  void update(double dt) {
+    super.update(dt);
+
+    // Zonen-Label ausblenden
+    if (_zoneLabelTimer > 0) {
+      _zoneLabelTimer -= dt;
+      if (_zoneLabelTimer <= 1.0) {
+        // In letzter Sekunde ausblenden
+        _zoneLabelOpacity = _zoneLabelTimer.clamp(0.0, 1.0);
+      }
+    }
+
+    // Sterne animieren (Funkeln)
+    for (final star in _stars) {
+      star.twinklePhase += star.twinkleSpeed * dt;
     }
   }
 
   @override
   void render(Canvas canvas) {
-    // --- Himmel ---
-    canvas.drawRect(
-      Rect.fromLTWH(0, 0, size.x, size.y - GameConstants.kGroundHeight),
-      _skyPaint,
-    );
+    _renderSky(canvas);
+    _renderStars(canvas);
+    _renderGround(canvas);
+    if (_zoneLabelOpacity > 0) {
+      _renderZoneLabel(canvas);
+    }
+  }
 
-    // --- Sterne ---
-    for (final star in _stars) {
+  /// Himmelgradient passend zur aktuellen Zone
+  void _renderSky(Canvas canvas) {
+    final List<Color> colors = AtmosphereZones.interpolatedColors(_altitudeM);
+    final Rect skyRect =
+        Rect.fromLTWH(0, 0, size.x, size.y - GameConstants.kGroundHeight);
+
+    final Paint skyPaint = Paint()
+      ..shader = LinearGradient(
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+        colors: [colors[0], colors[1]],
+      ).createShader(skyRect);
+
+    canvas.drawRect(skyRect, skyPaint);
+  }
+
+  /// Sterne - Dichte abhängig von Zone
+  void _renderStars(Canvas canvas) {
+    final double density = AtmosphereZones.forAltitude(_altitudeM).starDensity;
+    if (density <= 0) return;
+
+    // Wie viele Sterne sollen sichtbar sein
+    final int visibleCount = (_stars.length * density).round();
+
+    for (int i = 0; i < visibleCount && i < _stars.length; i++) {
+      final _Star star = _stars[i];
+      final double twinkle =
+          (sin(star.twinklePhase + star.twinkleOffset) * 0.3 + 0.7);
+      final double alpha = (star.brightness * twinkle * density).clamp(0.0, 1.0);
+
       final Paint starPaint = Paint()
-        ..color = Colors.white.withValues(alpha: star.brightness);
+        ..color = Colors.white.withValues(alpha: alpha);
       canvas.drawCircle(Offset(star.x, star.y), star.radius, starPaint);
     }
+  }
 
-    // --- Boden ---
-    final Rect ground = Rect.fromLTWH(
-      0,
-      size.y - GameConstants.kGroundHeight,
-      size.x,
-      GameConstants.kGroundHeight,
+  /// Boden mit Startrampe
+  void _renderGround(Canvas canvas) {
+    final double groundY = size.y - GameConstants.kGroundHeight;
+
+    // Bodenfläche
+    canvas.drawRect(
+      Rect.fromLTWH(0, groundY, size.x, GameConstants.kGroundHeight),
+      _groundPaint,
     );
-    canvas.drawRect(ground, _groundPaint);
 
-    // --- Bodenlinie ---
+    // Trennlinie
     canvas.drawLine(
-      Offset(0, size.y - GameConstants.kGroundHeight),
-      Offset(size.x, size.y - GameConstants.kGroundHeight),
+      Offset(0, groundY),
+      Offset(size.x, groundY),
       _groundLinePaint,
     );
 
-    // --- Startrampe (Mitte) ---
-    _renderLaunchPad(canvas);
+    // Startrampe
+    final double cx = size.x / 2;
+    canvas.drawRect(Rect.fromLTWH(cx - 40, groundY - 8, 80, 8), _padPaint);
+    canvas.drawCircle(Offset(cx - 35, groundY - 10), 4, _padLightPaint);
+    canvas.drawCircle(Offset(cx + 35, groundY - 10), 4, _padLightPaint);
   }
 
-  /// Zeichnet die Startrampe
-  void _renderLaunchPad(Canvas canvas) {
-    final Paint padPaint = Paint()..color = const Color(0xFF546E7A);
-    final Paint lightPaint = Paint()..color = const Color(0xFFFFCC02);
-    final double groundY = size.y - GameConstants.kGroundHeight;
-    final double centerX = size.x / 2;
+  /// Zonen-Einblend-Label (z.B. "STRATOSPHÄRE")
+  void _renderZoneLabel(Canvas canvas) {
+    final TextPainter tp = TextPainter(
+      text: TextSpan(
+        text: _zoneLabelText,
+        style: TextStyle(
+          color: Colors.white.withValues(alpha: _zoneLabelOpacity * 0.85),
+          fontSize: 22,
+          fontWeight: FontWeight.bold,
+          letterSpacing: 6,
+        ),
+      ),
+      textDirection: TextDirection.ltr,
+    )..layout();
 
-    // Plattform
-    canvas.drawRect(
-      Rect.fromLTWH(centerX - 40, groundY - 8, 80, 8),
-      padPaint,
+    tp.paint(
+      canvas,
+      Offset(size.x / 2 - tp.width / 2, size.y * 0.15),
     );
-
-    // Warnlichter
-    canvas.drawCircle(Offset(centerX - 35, groundY - 10), 4, lightPaint);
-    canvas.drawCircle(Offset(centerX + 35, groundY - 10), 4, lightPaint);
   }
 }
 
-/// Internes Datentransfer-Objekt für einen Stern
+/// Internes Datenobjekt für einen Stern
 class _Star {
   final double x;
   final double y;
   final double radius;
   final double brightness;
+  final double twinkleSpeed;
+  final double twinkleOffset;
+  double twinklePhase = 0.0;
 
-  const _Star({
+  _Star({
     required this.x,
     required this.y,
     required this.radius,
     required this.brightness,
+    required this.twinkleSpeed,
+    required this.twinkleOffset,
   });
 }

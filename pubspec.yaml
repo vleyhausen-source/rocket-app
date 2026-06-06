@@ -11,6 +11,7 @@ dependencies:
   flutter:
     sdk: flutter
   flame: ^1.18.0
+  flame_audio: ^2.10.0
   flutter_riverpod: ^2.5.0
   riverpod: ^2.5.0
   shared_preferences: ^2.2.0

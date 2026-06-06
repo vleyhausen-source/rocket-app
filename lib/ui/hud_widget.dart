@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:rocket_app/game/atmosphere_zone.dart';
 import 'package:rocket_app/game/rocket_game.dart';
 import 'package:rocket_app/managers/score_manager.dart';
 
@@ -11,7 +12,8 @@ class HudWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final bool inStratosphere =
-        game.altitude >= ScoreConstants.kStratosphereThresholdPx;
+        game.altitudeM >= ScoreConstants.kStratosphereThresholdPx / ScoreConstants.kPixelsPerMeter;
+    final AtmosphereZone zone = game.currentZone;
 
     return SafeArea(
       child: Padding(
@@ -19,38 +21,26 @@ class HudWidget extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Zonen-Chip oben
+            _ZoneChip(zone: zone),
+            const SizedBox(height: 10),
             // Score
-            _HudLabel(
-              icon: Icons.star,
-              label: 'Score',
-              value: game.score.toString(),
-              color: Colors.amber,
-            ),
+            _HudLabel(icon: Icons.star, label: 'Score', value: game.score.toString(), color: Colors.amber),
             const SizedBox(height: 6),
             // Highscore
-            _HudLabel(
-              icon: Icons.emoji_events,
-              label: 'Best',
-              value: game.highscore.toString(),
-              color: Colors.orangeAccent,
-            ),
+            _HudLabel(icon: Icons.emoji_events, label: 'Best', value: game.highscore.toString(), color: Colors.orangeAccent),
             const SizedBox(height: 6),
             // Höhe
             _HudLabel(
               icon: Icons.height,
               label: 'Höhe',
-              value: '${(game.altitude / ScoreConstants.kPixelsPerMeter).toStringAsFixed(1)} m',
+              value: '${game.altitudeM.toStringAsFixed(0)} m',
               color: Colors.lightBlueAccent,
             ),
             const SizedBox(height: 6),
-            // Coins diese Runde
-            _HudLabel(
-              icon: Icons.monetization_on,
-              label: 'Coins',
-              value: game.coinsThisRun.toString(),
-              color: Colors.yellowAccent,
-            ),
-            // Stratosphären-Indikator
+            // Coins
+            _HudLabel(icon: Icons.monetization_on, label: 'Coins', value: game.coinsThisRun.toString(), color: Colors.yellowAccent),
+            // Stratosphären-Bonus-Indikator
             if (inStratosphere) ...[
               const SizedBox(height: 8),
               Container(
@@ -66,21 +56,52 @@ class HudWidget extends StatelessWidget {
                     const Icon(Icons.rocket_launch, color: Colors.purpleAccent, size: 14),
                     const SizedBox(width: 4),
                     Text(
-                      'STRATOSPHÄRE  +${ScoreConstants.kStratosphereBonusPerSecond.toInt()}/s',
-                      style: const TextStyle(
-                        color: Colors.purpleAccent,
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                      ),
+                      '+${ScoreConstants.kStratosphereBonusPerSecond.toInt()}/s',
+                      style: const TextStyle(color: Colors.purpleAccent, fontSize: 12, fontWeight: FontWeight.bold),
                     ),
                   ],
                 ),
               ),
             ],
             const SizedBox(height: 12),
-            // Kraftstoff
             _FuelBar(fuelPercent: game.fuelPercent),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Chip der aktuellen Atmosphären-Zone
+class _ZoneChip extends StatelessWidget {
+  final AtmosphereZone zone;
+  const _ZoneChip({required this.zone});
+
+  Color get _zoneColor {
+    return switch (zone.name) {
+      'Troposphäre' => Colors.lightBlue,
+      'Obere Atmosphäre' => Colors.indigo,
+      'Stratosphäre' => Colors.deepPurple,
+      _ => Colors.blueGrey,
+    };
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: _zoneColor.withValues(alpha: 0.25),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: _zoneColor.withValues(alpha: 0.6), width: 1),
+      ),
+      child: Text(
+        zone.name.toUpperCase(),
+        style: TextStyle(
+          color: _zoneColor,
+          fontSize: 11,
+          fontWeight: FontWeight.bold,
+          letterSpacing: 2,
         ),
       ),
     );
