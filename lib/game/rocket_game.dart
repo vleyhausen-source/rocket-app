@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:flame/events.dart';
 import 'package:flame/game.dart';
 import 'package:flutter/material.dart';
@@ -8,6 +10,7 @@ import 'package:rocket_app/components/explosion_component.dart';
 import 'package:rocket_app/components/planet_component.dart';
 import 'package:rocket_app/components/rocket_component.dart';
 import 'package:rocket_app/game/atmosphere_zone.dart';
+import 'package:rocket_app/game/game_constants.dart';
 import 'package:rocket_app/managers/audio_manager.dart';
 import 'package:rocket_app/managers/score_manager.dart';
 import 'package:rocket_app/managers/upgrade_manager.dart';
@@ -106,7 +109,12 @@ class RocketGame extends FlameGame
   }
 
   Vector2 _rocketStartPosition() {
-    return Vector2(size.x / 2, size.y - ScoreConstants.kCoinMinHeightPx);
+    // Rakete muss vollständig ÜBER dem Boden starten:
+    // groundY = size.y - kCoinMinHeightPx
+    // anchor = bottomCenter => position.y = Raketen-Unterkante
+    // Startposition: groundY - kLaunchHeightOffset (Abstand über Boden)
+    final double groundY = size.y - ScoreConstants.kCoinMinHeightPx;
+    return Vector2(size.x / 2, groundY - GameConstants.kLaunchHeightOffset);
   }
 
   // =========================================================================
@@ -217,22 +225,18 @@ class RocketGame extends FlameGame
       final double distSq = dx * dx + dy * dy;
 
       if (distSq > radius * radius) continue;
-      if (distSq < 0.0001) continue; // Coin direkt auf Rakete -- wird nächsten Frame gesammelt
+      if (distSq < 0.0001) continue; // Coin direkt auf Rakete -- nächsten Frame gesammelt
 
-      // Euklidische Distanz für korrekte Normierung
-      final double dist = distSq.clamp(0.0001, double.infinity);
+      // Euklidische Distanz für korrekte Normierung (kein distSq als Divisor!)
+      final double dist = sqrt(distSq);
 
       // Quadratische Pull-Kurve: nahe Coins ziehen schnell
-      final double t = 1.0 - (dist / (radius * radius)).clamp(0.0, 1.0);
+      final double t = 1.0 - (dist / radius).clamp(0.0, 1.0);
       final double pullSpeed = 500.0 * t * t;
 
-      // Normierter Richtungsvektor (dx/dist, dy/dist) -- dist ist distSq, also sqrt nötig
-      final double distLen = dist < 1 ? 1.0 : dist;
-      final double nx = dx / distLen; // Annäherung: nicht sqrt, aber konsistent
-      final double ny = dy / distLen;
-
-      coin.position.x -= nx * pullSpeed * dt;
-      coin.position.y -= ny * pullSpeed * dt;
+      // Normierter Richtungsvektor: dx/dist, dy/dist
+      coin.position.x -= (dx / dist) * pullSpeed * dt;
+      coin.position.y -= (dy / dist) * pullSpeed * dt;
     }
   }
 

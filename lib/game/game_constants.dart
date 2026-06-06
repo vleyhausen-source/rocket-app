@@ -35,7 +35,7 @@ class GameConstants {
   static const double kTiltSpeed = 120.0;
 
   /// Startabstand vom Boden in Pixeln
-  static const double kLaunchHeightOffset = 20.0;
+  static const double kLaunchHeightOffset = 80.0;
 
   // --- Spielfeld ---
   /// Bodendicke in Pixeln
