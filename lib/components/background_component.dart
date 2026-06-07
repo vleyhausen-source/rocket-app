@@ -116,11 +116,11 @@ class BackgroundComponent extends PositionComponent {
     }
   }
 
-  /// Himmelgradient passend zur aktuellen Zone
+  /// Himmelgradient passend zur aktuellen Zone -- deckt die gesamte Bildschirmfläche ab
   void _renderSky(Canvas canvas) {
     final List<Color> colors = AtmosphereZones.interpolatedColors(_altitudeM);
-    final Rect skyRect =
-        Rect.fromLTWH(0, 0, size.x, size.y - GameConstants.kGroundHeight);
+    // Volle Bildschirmhöhe -- kein schwarzer Streifen am unteren Rand
+    final Rect skyRect = Rect.fromLTWH(0, 0, size.x, size.y);
 
     final Paint skyPaint = Paint()
       ..shader = LinearGradient(
