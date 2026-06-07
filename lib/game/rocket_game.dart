@@ -10,7 +10,6 @@ import 'package:rocket_app/components/explosion_component.dart';
 import 'package:rocket_app/components/planet_component.dart';
 import 'package:rocket_app/components/rocket_component.dart';
 import 'package:rocket_app/game/atmosphere_zone.dart';
-import 'package:rocket_app/game/game_constants.dart';
 import 'package:rocket_app/managers/audio_manager.dart';
 import 'package:rocket_app/managers/score_manager.dart';
 import 'package:rocket_app/managers/upgrade_manager.dart';
@@ -31,7 +30,6 @@ class RocketGame extends FlameGame
   final ScoreManager _scoreManager = ScoreManager.instance;
   final AudioManager _audioManager = AudioManager.instance;
   final UpgradeManager _upgMgr = UpgradeManager.instance;
-  final CoinSpawner _coinSpawner = CoinSpawner();
 
   // --- Zustand ---
   GamePhase phase = GamePhase.menu;
@@ -117,12 +115,11 @@ class RocketGame extends FlameGame
   }
 
   Vector2 _rocketStartPosition() {
-    // Rakete muss vollständig ÜBER dem Boden starten:
-    // groundY = size.y - kCoinMinHeightPx
-    // anchor = bottomCenter => position.y = Raketen-Unterkante
-    // Startposition: groundY - kLaunchHeightOffset (Abstand über Boden)
+    // anchor = bottomCenter => position.y ist die Raketen-Unterkante.
+    // Startrampe sitzt bei groundY - 8 bis groundY.
+    // Rakete steht DIREKT auf der Rampe: position.y = groundY - 8 (Rampenoberkante).
     final double groundY = size.y - ScoreConstants.kCoinMinHeightPx;
-    return Vector2(size.x / 2, groundY - GameConstants.kLaunchHeightOffset);
+    return Vector2(size.x / 2, groundY - 8.0);
   }
 
   // =========================================================================
@@ -243,15 +240,16 @@ class RocketGame extends FlameGame
     }
   }
 
-  /// Spawnt eine neue Reihe von Coins oben im sichtbaren Bereich
+  /// Spawnt eine neue Reihe von Coins OBERHALB des sichtbaren Bildschirms.
+  /// Sie scrollen durch die Kamera-Bewegung natürlich ins Bild hinein.
   void _spawnCoinRow() {
     final Random rnd = Random();
-    const int count = 6;
+    const int count = 7;
     final int coinVal = _altitudeCoinValue();
 
     for (int i = 0; i < count; i++) {
-      // Neue Coins erscheinen im oberen Viertel des Bildschirms
-      final double spawnY = size.y * 0.05 + rnd.nextDouble() * size.y * 0.25;
+      // Coins spawnen 10-80% einer Bildschirmhöhe ÜBER dem oberen Rand
+      final double spawnY = -(size.y * 0.10 + rnd.nextDouble() * size.y * 0.70);
       final double spawnX = size.x * 0.08 + rnd.nextDouble() * size.x * 0.84;
 
       final coin = CoinComponent(
@@ -399,6 +397,13 @@ class RocketGame extends FlameGame
     const double collectRadius = CoinComponent.kCoinRadius + 20.0;
 
     for (final coin in List<CoinComponent>.from(_activeCoins)) {
+      // Off-Screen-Cleanup: Coins die unter den Bildschirm gescrollt sind entfernen
+      if (coin.position.y > size.y + 40) {
+        coin.removeFromParent();
+        _activeCoins.remove(coin);
+        continue;
+      }
+
       final double dx = coin.position.x - rx;
       final double dy = coin.position.y - ry;
       if (dx * dx + dy * dy <= collectRadius * collectRadius) {
@@ -419,16 +424,25 @@ class RocketGame extends FlameGame
     }
     _activeCoins.clear();
 
-    final spawnData = _coinSpawner.generateCoins(
-      screenWidth: size.x,
-      screenHeight: size.y,
-      groundHeight: ScoreConstants.kCoinMinHeightPx,
-    );
+    // Startcoins verteilt über mehrere Bildschirmhöhen OBERHALB des Bildschirms.
+    // So scrollen sie natürlich ins Bild -- kein Popping auf Screen.
+    final Random rnd = Random();
+    const int totalCoins = ScoreConstants.kCoinsPerRun;
+    // 3 Abschnitte: 0-1x, 1-2x und 2-3x Bildschirmhöhe über dem oberen Rand
+    const int perSection = totalCoins ~/ 3;
 
-    for (final data in spawnData) {
+    for (int i = 0; i < totalCoins; i++) {
+      final int section = (i ~/ perSection).clamp(0, 2);
+      final double sectionStart = section * size.y;
+      final double spawnY = -(sectionStart + rnd.nextDouble() * size.y);
+      final double spawnX = size.x * 0.08 + rnd.nextDouble() * size.x * 0.84;
+
+      // Wert steigt mit Abstand: 1 = nah, 2 = mittel, 3 = weit
+      final int coinVal = section + 1;
+
       final coin = CoinComponent(
-        position: data.position,
-        value: data.value,
+        position: Vector2(spawnX, spawnY),
+        value: coinVal,
         onCollected: (int value) => _scoreManager.collectCoin(value),
       );
       _activeCoins.add(coin);

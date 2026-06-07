@@ -102,6 +102,7 @@ class RocketComponent extends PositionComponent with CollisionCallbacks {
   /// Setzt die Rakete auf Startposition zurück
   void reset(Vector2 startPosition) {
     position = startPosition;
+    angle = 0.0;           // Crash-Winkel explizit auf 0 zurücksetzen
     velocity = Vector2.zero();
     tiltDegrees = 0.0;
     fuel = maxFuel;
