@@ -14,6 +14,10 @@ class BackgroundComponent extends PositionComponent {
   double _altitudeM = 0.0;
   AtmosphereZone _currentZone = AtmosphereZones.zone1Ground;
 
+  // --- Kamera/Scrolling: Boden-Y relativ zum Bildschirm ---
+  /// Wie weit der Boden vom unteren Bildschirmrand entfernt ist (scrollt nach unten = groesser)
+  double _groundOffsetY = 0.0;
+
   // --- Boden ---
   final Paint _groundPaint = Paint()..color = const Color(0xFF1A3A1A);
   final Paint _groundLinePaint = Paint()
@@ -64,6 +68,17 @@ class BackgroundComponent extends PositionComponent {
     }
 
     _altitudeM = altitudeM;
+  }
+
+  /// Wird vom Kamera-System aufgerufen wenn die Welt scrollt.
+  /// Der Boden bewegt sich nach unten (scrollt aus dem Bild wenn Rakete hoch genug).
+  void scroll(double delta) {
+    _groundOffsetY += delta;
+  }
+
+  /// Setzt den Kamera-Zustand zurück (neues Spiel)
+  void resetCamera() {
+    _groundOffsetY = 0.0;
   }
 
   @override
@@ -131,9 +146,12 @@ class BackgroundComponent extends PositionComponent {
     }
   }
 
-  /// Boden mit Startrampe
+  /// Boden mit Startrampe (scrollt mit der Kamera nach unten)
   void _renderGround(Canvas canvas) {
-    final double groundY = size.y - GameConstants.kGroundHeight;
+    final double groundY = size.y - GameConstants.kGroundHeight + _groundOffsetY;
+
+    // Boden ist ausserhalb des Bildschirms -- nicht rendern
+    if (groundY >= size.y) return;
 
     // Bodenfläche
     canvas.drawRect(
@@ -148,7 +166,7 @@ class BackgroundComponent extends PositionComponent {
       _groundLinePaint,
     );
 
-    // Startrampe
+    // Startrampe (nur sichtbar wenn Boden auf Screen)
     final double cx = size.x / 2;
     canvas.drawRect(Rect.fromLTWH(cx - 40, groundY - 8, 80, 8), _padPaint);
     canvas.drawCircle(Offset(cx - 35, groundY - 10), 4, _padLightPaint);

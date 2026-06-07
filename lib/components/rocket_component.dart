@@ -245,61 +245,61 @@ class RocketComponent extends PositionComponent with CollisionCallbacks {
       ..close();
     canvas.drawPath(rightFin, _finPaint);
 
-    // --- Rumpf (abgerundet) ---
+    // --- Rumpf (abgerundet, schlanker) ---
     final RRect body = RRect.fromLTRBR(
-      w * 0.22, h * 0.28,
-      w * 0.78, h * 0.9,
-      const Radius.circular(6),
+      w * 0.28, h * 0.25,
+      w * 0.72, h * 0.9,
+      const Radius.circular(5),
     );
     canvas.drawRRect(body, _bodyPaint);
 
     // --- Rumpf-Akzent (dunkler Streifen rechts = 3D-Effekt) ---
     final RRect shade = RRect.fromLTRBR(
-      w * 0.62, h * 0.28,
-      w * 0.78, h * 0.9,
-      const Radius.circular(6),
+      w * 0.60, h * 0.25,
+      w * 0.72, h * 0.9,
+      const Radius.circular(5),
     );
     canvas.drawRRect(shade, _bodyAccentPaint);
 
     // --- Lila Zier-Streifen ---
     canvas.drawRect(
-      Rect.fromLTWH(w * 0.22, h * 0.58, w * 0.56, h * 0.05),
+      Rect.fromLTWH(w * 0.28, h * 0.58, w * 0.44, h * 0.05),
       _stripePaint,
     );
 
-    // --- Nase (Kegelform) ---
+    // --- Nase (schlanker Kegel: enger Basiswinkel, lange Spitze) ---
     final Path nose = Path()
       ..moveTo(w * 0.5, 0)
-      ..cubicTo(w * 0.5, 0, w * 0.82, h * 0.22, w * 0.78, h * 0.30)
-      ..lineTo(w * 0.22, h * 0.30)
-      ..cubicTo(w * 0.18, h * 0.22, w * 0.5, 0, w * 0.5, 0)
+      ..cubicTo(w * 0.5, h * 0.02, w * 0.68, h * 0.16, w * 0.72, h * 0.26)
+      ..lineTo(w * 0.28, h * 0.26)
+      ..cubicTo(w * 0.32, h * 0.16, w * 0.5, h * 0.02, w * 0.5, 0)
       ..close();
     canvas.drawPath(nose, _nosePaint);
 
-    // --- Nasen-Schatten ---
+    // --- Nasen-Schatten (schmalere Schattierung rechts) ---
     final Path noseShade = Path()
-      ..moveTo(w * 0.62, h * 0.04)
-      ..cubicTo(w * 0.75, h * 0.10, w * 0.80, h * 0.20, w * 0.78, h * 0.30)
-      ..lineTo(w * 0.62, h * 0.30)
+      ..moveTo(w * 0.60, h * 0.06)
+      ..cubicTo(w * 0.68, h * 0.14, w * 0.72, h * 0.22, w * 0.72, h * 0.26)
+      ..lineTo(w * 0.58, h * 0.26)
       ..close();
     canvas.drawPath(noseShade, _noseAccentPaint);
 
-    // --- Cockpit-Fenster (mit Glow) ---
+    // --- Cockpit-Fenster (mit Glow, etwas tiefer wegen schlankerer Nase) ---
     canvas.drawCircle(
-      Offset(w * 0.5, h * 0.43),
-      w * 0.14,
+      Offset(w * 0.5, h * 0.40),
+      w * 0.13,
       _windowGlowPaint,
     );
     canvas.drawCircle(
-      Offset(w * 0.5, h * 0.43),
-      w * 0.11,
+      Offset(w * 0.5, h * 0.40),
+      w * 0.10,
       _windowPaint,
     );
 
     // --- Glanzpunkt im Fenster ---
     canvas.drawCircle(
-      Offset(w * 0.44, h * 0.40),
-      w * 0.035,
+      Offset(w * 0.44, h * 0.37),
+      w * 0.030,
       _glintPaint,
     );
   }

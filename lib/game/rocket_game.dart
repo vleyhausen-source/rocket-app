@@ -16,7 +16,7 @@ import 'package:rocket_app/managers/score_manager.dart';
 import 'package:rocket_app/managers/upgrade_manager.dart';
 
 /// Spielzustand-Enum für den gesamten Game-Loop
-enum GamePhase { menu, playing, crashed, paused }
+enum GamePhase { menu, ready, playing, crashed, paused }
 
 /// Hauptspiel-Klasse: koordiniert Physik, Touch, Atmosphäre, Coins, Scoring, Upgrades
 class RocketGame extends FlameGame
@@ -36,6 +36,13 @@ class RocketGame extends FlameGame
   // --- Zustand ---
   GamePhase phase = GamePhase.menu;
   AtmosphereZone _lastZone = AtmosphereZones.zone1Ground;
+
+  // --- Kamera/Scrolling ---
+  /// Wie weit die Welt nach oben gescrollt wurde (in Pixeln, nur nach oben)
+  double _cameraWorldY = 0.0;
+
+  /// Gewuenschte Raketen-Bildschirm-Y-Position (Rakete bleibt hier auf dem Screen)
+  static const double _kRocketScreenY = 0.45; // 45% von oben
 
   // --- Coin-Tracking ---
   final List<CoinComponent> _activeCoins = [];
@@ -70,6 +77,7 @@ class RocketGame extends FlameGame
   bool get isPlaying => phase == GamePhase.playing;
   bool get isCrashed => phase == GamePhase.crashed;
   bool get isMenu => phase == GamePhase.menu;
+  bool get isReady => phase == GamePhase.ready;
   bool get audioEnabled => _audioManager.isEnabled;
 
   // Spezial-Upgrade-Getter für HUD
@@ -131,9 +139,11 @@ class RocketGame extends FlameGame
 
     _applyTouchInput();
     _updateSpecialUpgrades(safeDt);
+    _updateCamera(safeDt);
     _updateAtmosphere();
     _updateScoring(safeDt);
     _checkCollisions(safeDt);
+    _checkNewCoinRow();
     _updateCoinMagnet(safeDt);
 
     // UI-Rebuild gedrosselt auf 30/s
@@ -175,13 +185,100 @@ class RocketGame extends FlameGame
   }
 
   // =========================================================================
-  // ATMOSPHÄRE
+  // KAMERA / SCROLLING
   // =========================================================================
 
-  void _updateAtmosphere() {
+  /// Verfolgt die Rakete nach oben -- Rakete bleibt bei _kRocketScreenY des Bildschirms.
+  /// Wenn die Rakete uber den Fixpunkt steigt, wird der Scrolloffset erhoht
+  /// und alle Objekte (Boden, Coins) ruecken nach unten.
+  void _updateCamera(double dt) {
+    // Ziel-Y der Rakete auf dem Bildschirm
+    final double targetRocketScreenY = size.y * _kRocketScreenY;
+
+    // Wenn Rakete uber den Fixpunkt steigt, Kamera mitbewegen
+    if (_rocket.position.y < targetRocketScreenY) {
+      final double scrollDelta = targetRocketScreenY - _rocket.position.y;
+      _cameraWorldY += scrollDelta;
+
+      // Rakete auf Fixpunkt zuruecksetzen (visuell bleibt sie stehen)
+      _rocket.position.y = targetRocketScreenY;
+
+      // Alle anderen Objekte um scrollDelta nach unten verschieben (Welt scrollt)
+      _scrollWorldObjects(scrollDelta);
+    }
+  }
+
+  /// Bewegt alle Welt-Objekte um [delta] nach unten wenn die Kamera scrollt
+  void _scrollWorldObjects(double delta) {
+    // Coins nach unten verschieben
+    for (final coin in _activeCoins) {
+      coin.position.y += delta;
+    }
+
+    // Background: wird via updateAtmosphere gesteuert (Farben/Zonen),
+    // Boden-Position scrollt ebenfalls
+    _background.scroll(delta);
+
+    // Explosions-Komponenten scrollt mit (falls vorhanden)
+    for (final child in children) {
+      if (child is ExplosionComponent) {
+        child.position.y += delta;
+      }
+    }
+  }
+
+  /// Spawnt neue Coins wenn der Spieler neue Hoehenbereiche erreicht.
+  /// Alle 3 Bildschirmhoehen wird eine neue Coin-Reihe oben spawnt.
+  double _lastCoinSpawnAltitudePx = 0.0;
+  static const double _kCoinRespawnIntervalPx = 400.0; // neue Coins alle 400px Hoehe
+
+  void _checkNewCoinRow() {
     final double groundY = size.y - ScoreConstants.kCoinMinHeightPx;
-    final double altPx =
-        (groundY - _rocket.position.y).clamp(0.0, double.infinity);
+    final double rocketRelativeY = (groundY - _rocket.position.y).clamp(0.0, double.infinity);
+    final double altPx = _cameraWorldY + rocketRelativeY;
+
+    if (altPx - _lastCoinSpawnAltitudePx >= _kCoinRespawnIntervalPx) {
+      _lastCoinSpawnAltitudePx = altPx;
+      _spawnCoinRow();
+    }
+  }
+
+  /// Spawnt eine neue Reihe von Coins oben im sichtbaren Bereich
+  void _spawnCoinRow() {
+    final Random rnd = Random();
+    const int count = 6;
+    final int coinVal = _altitudeCoinValue();
+
+    for (int i = 0; i < count; i++) {
+      // Neue Coins erscheinen im oberen Viertel des Bildschirms
+      final double spawnY = size.y * 0.05 + rnd.nextDouble() * size.y * 0.25;
+      final double spawnX = size.x * 0.08 + rnd.nextDouble() * size.x * 0.84;
+
+      final coin = CoinComponent(
+        position: Vector2(spawnX, spawnY),
+        value: coinVal,
+        onCollected: (int value) => _scoreManager.collectCoin(value),
+      );
+      _activeCoins.add(coin);
+      add(coin);
+    }
+  }
+
+  /// Coin-Wert basierend auf aktueller Hoehe
+  int _altitudeCoinValue() {
+    final double altM = _cameraWorldY / ScoreConstants.kPixelsPerMeter;
+    if (altM < 50) return 1;
+    if (altM < 200) return 2;
+    return 3;
+  }
+
+
+
+  void _updateAtmosphere() {
+    // Hoehe = kumulierte Kamerabewegung + aktuelle Raketen-Hoehe uber Boden auf Screen
+    final double groundY = size.y - ScoreConstants.kCoinMinHeightPx;
+    final double rocketRelativeY = (groundY - _rocket.position.y).clamp(0.0, double.infinity);
+    final double altPx = _cameraWorldY + rocketRelativeY;
     final double altM = altPx / ScoreConstants.kPixelsPerMeter;
 
     _background.updateAtmosphere(altM);
@@ -201,9 +298,10 @@ class RocketGame extends FlameGame
   // =========================================================================
 
   void _updateScoring(double dt) {
+    // Hoehe = kumulierte Kamerabewegung + aktuelle Raketen-Hoehe uber Boden auf Screen
     final double groundY = size.y - ScoreConstants.kCoinMinHeightPx;
-    final double altPx =
-        (groundY - _rocket.position.y).clamp(0.0, double.infinity);
+    final double rocketRelativeY = (groundY - _rocket.position.y).clamp(0.0, double.infinity);
+    final double altPx = _cameraWorldY + rocketRelativeY;
     _scoreManager.update(dt, altPx);
   }
 
@@ -251,11 +349,20 @@ class RocketGame extends FlameGame
     final double rocketBottom = _rocket.position.y;
     final double rocketLeft = _rocket.position.x - _rocket.size.x / 2;
     final double rocketRight = _rocket.position.x + _rocket.size.x / 2;
-    final double groundY = size.y - ScoreConstants.kCoinMinHeightPx;
 
-    if (rocketBottom >= groundY) { _handlePotentialCrash(); return; }
-    if (rocketLeft <= 0)          { _handlePotentialCrash(); return; }
-    if (rocketRight >= size.x)    { _handlePotentialCrash(); return; }
+    // Boden-Kollision: 
+    // - Solange cameraWorldY < screenHeight: Boden ist noch auf Screen
+    // - Wenn Rakete unter den unteren Bildschirmrand faellt (y >= size.y) -> immer Absturz
+    final double screenGroundY = size.y - ScoreConstants.kCoinMinHeightPx;
+    final bool rocketFellBelowScreen = rocketBottom >= size.y - 20;
+    final bool rocketHitGround = _cameraWorldY < size.y && rocketBottom >= screenGroundY;
+    if (rocketFellBelowScreen || rocketHitGround) {
+      _handlePotentialCrash();
+      return;
+    }
+
+    if (rocketLeft <= 0)        { _handlePotentialCrash(); return; }
+    if (rocketRight >= size.x)  { _handlePotentialCrash(); return; }
 
     // Oberer Rand: Bounce -- Velocity nach unten drehen, kein Absturz
     if (_rocket.position.y <= 0) {
@@ -366,16 +473,29 @@ class RocketGame extends FlameGame
     _activeTouches.clear();
     _lastZone = AtmosphereZones.zone1Ground;
 
+    // Kamera zurücksetzen
+    _cameraWorldY = 0.0;
+    _lastCoinSpawnAltitudePx = 0.0;
+    _background.resetCamera();
+
     _rocket.reset(_rocketStartPosition());
 
     // Upgrade-Effekte auf Rakete anwenden
     _applyUpgradesToRocket();
 
-    _rocket.launch();
+    // Rakete bleibt idle -- Spieler muss Bildschirm berühren zum Starten
     _spawnCoins();
     await _audioManager.stopAll();
     await _audioManager.playZoneAmbient(AtmosphereZones.zone1Ground);
+    phase = GamePhase.ready;
+    onStateChange?.call();
+  }
+
+  /// Startet den echten Flug (beim ersten Touch im ready-Zustand)
+  void _launchRocket() {
+    if (phase != GamePhase.ready) return;
     phase = GamePhase.playing;
+    _rocket.launch();
     onStateChange?.call();
   }
 
@@ -421,9 +541,14 @@ class RocketGame extends FlameGame
 
   @override
   void onDragStart(int pointerId, DragStartInfo info) {
-    // Spiel starten -- nur wenn noch nicht playing (verhindert Double-Start bei Multi-Touch)
+    // Menu/Crash -> startGame() (Phase wird ready)
     if (phase == GamePhase.menu || phase == GamePhase.crashed) {
-      if (phase != GamePhase.playing) startGame();
+      if (phase != GamePhase.playing && phase != GamePhase.ready) startGame();
+      return;
+    }
+    // Ready -> Flug starten + Touch registrieren
+    if (phase == GamePhase.ready) {
+      _launchRocket();
     }
     _activeTouches[pointerId] = info.eventPosition.global.x;
   }
@@ -445,7 +570,13 @@ class RocketGame extends FlameGame
 
   @override
   void onTapDown(TapDownEvent event) {
-    if (phase == GamePhase.menu || phase == GamePhase.crashed) startGame();
+    if (phase == GamePhase.menu || phase == GamePhase.crashed) {
+      startGame();
+      return;
+    }
+    if (phase == GamePhase.ready) {
+      _launchRocket();
+    }
     _activeTouches[event.pointerId] = event.devicePosition.x;
   }
 
