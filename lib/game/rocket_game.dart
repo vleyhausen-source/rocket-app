@@ -40,7 +40,7 @@ class RocketGame extends FlameGame
   double _cameraWorldY = 0.0;
 
   /// Gewuenschte Raketen-Bildschirm-Y-Position (Rakete bleibt hier auf dem Screen)
-  static const double _kRocketScreenY = 0.45; // 45% von oben
+  static const double _kRocketScreenY = 0.70; // 70% von oben = unteres Drittel
 
   // --- Coin-Tracking ---
   final List<CoinComponent> _activeCoins = [];
@@ -59,6 +59,10 @@ class RocketGame extends FlameGame
   // --- Shield-Cooldown: verhindert multi-frame Drain ---
   double _shieldCooldown = 0.0;
   static const double _kShieldCooldownDuration = 0.8; // Sekunden
+
+  // --- Hull-Cooldown: verhindert multi-frame Wall-Drain ---
+  double _wallHitCooldown = 0.0;
+  static const double _kWallHitCooldownDuration = 0.6; // Sekunden
 
   // --- Getter für UI ---
   int get score => _scoreManager.currentScore;
@@ -84,6 +88,7 @@ class RocketGame extends FlameGame
   bool get boosterActive => _upgMgr.boosterTimeRemaining > 0;
   double get boosterTimeLeft => _upgMgr.boosterTimeRemaining;
   int get shieldsLeft => _upgMgr.shieldsRemaining;
+  int get hullLivesLeft => _upgMgr.hullLivesRemaining;
   bool get autopilotAvailable =>
       _upgMgr.autopilotDuration > 0 && !_upgMgr.autopilotActive;
   bool get autopilotActive => _upgMgr.autopilotActive;
@@ -341,8 +346,9 @@ class RocketGame extends FlameGame
   // =========================================================================
 
   void _checkCollisions(double dt) {
-    // Shield-Cooldown ticken
+    // Cooldowns ticken
     if (_shieldCooldown > 0) _shieldCooldown -= dt;
+    if (_wallHitCooldown > 0) _wallHitCooldown -= dt;
 
     final double rocketBottom = _rocket.position.y;
     final double rocketLeft = _rocket.position.x - _rocket.size.x / 2;
@@ -359,8 +365,8 @@ class RocketGame extends FlameGame
       return;
     }
 
-    if (rocketLeft <= 0)        { _handlePotentialCrash(); return; }
-    if (rocketRight >= size.x)  { _handlePotentialCrash(); return; }
+    if (rocketLeft <= 0)        { _handleWallHit(left: true);  return; }
+    if (rocketRight >= size.x)  { _handleWallHit(left: false); return; }
 
     // Oberer Rand: Bounce -- Velocity nach unten drehen, kein Absturz
     if (_rocket.position.y <= 0) {
@@ -385,6 +391,36 @@ class RocketGame extends FlameGame
           _rocket.position.x.clamp(_rocket.size.x, size.x - _rocket.size.x);
       _rocket.position.y =
           (size.y - ScoreConstants.kCoinMinHeightPx - 80).clamp(50, size.y - 150);
+      onStateChange?.call();
+    } else {
+      _triggerCrash();
+    }
+  }
+
+  /// Wandaufprall: Hüllenpanzerung absorbiert, sonst Absturz.
+  /// [left] = true wenn linke Wand getroffen
+  void _handleWallHit({required bool left}) {
+    // Wall-Cooldown verhindert multi-frame Drain
+    if (_wallHitCooldown > 0) return;
+
+    final bool absorbed = _upgMgr.absorbWallHit();
+    if (absorbed) {
+      _wallHitCooldown = _kWallHitCooldownDuration;
+
+      // Horizontale Velocity umkehren (Abprallphysik) + Dämpfung
+      _rocket.velocity.x = -_rocket.velocity.x * 0.7;
+
+      // Rakete von der Wand wegsetzen (mindestens halbe Breite Abstand)
+      final double halfW = _rocket.size.x / 2;
+      if (left) {
+        _rocket.position.x = halfW + 4;
+      } else {
+        _rocket.position.x = size.x - halfW - 4;
+      }
+
+      // Neigung zurücksetzen (Abprall stabilisiert die Rakete etwas)
+      _rocket.tiltDegrees *= 0.4;
+
       onStateChange?.call();
     } else {
       _triggerCrash();
@@ -491,6 +527,8 @@ class RocketGame extends FlameGame
     _cameraWorldY = 0.0;
     _lastCoinSpawnAltitudePx = 0.0;
     _background.resetCamera();
+    _shieldCooldown = 0.0;
+    _wallHitCooldown = 0.0;
 
     _rocket.reset(_rocketStartPosition());
 

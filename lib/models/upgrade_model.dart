@@ -86,8 +86,8 @@ class UpgradeDefinitions {
     category: UpgradeCategory.engine,
     icon: Icons.rocket_launch,
     costs: [50, 120, 250, 500, 1000],
-    effectLabels: ['+10%', '+20%', '+35%', '+55%', '+80%'],
-    effectValues: [1.10, 1.20, 1.35, 1.55, 1.80],
+    effectLabels: ['+15%', '+30%', '+55%', '+90%', '+150%'],
+    effectValues: [1.15, 1.30, 1.55, 1.90, 2.50],
   );
 
   static const UpgradeDefinition fuelEfficiency = UpgradeDefinition(
@@ -97,8 +97,8 @@ class UpgradeDefinitions {
     category: UpgradeCategory.engine,
     icon: Icons.savings,
     costs: [60, 140, 280, 560, 1100],
-    effectLabels: ['-10%', '-20%', '-30%', '-45%', '-60%'],
-    effectValues: [0.90, 0.80, 0.70, 0.55, 0.40],
+    effectLabels: ['-15%', '-28%', '-42%', '-58%', '-72%'],
+    effectValues: [0.85, 0.72, 0.58, 0.42, 0.28],
   );
 
   // ==========================================================================
@@ -112,8 +112,8 @@ class UpgradeDefinitions {
     category: UpgradeCategory.tank,
     icon: Icons.water_drop,
     costs: [80, 180, 360, 720, 1440],
-    effectLabels: ['+25%', '+50%', '+80%', '+120%', '+200%'],
-    effectValues: [125.0, 150.0, 180.0, 220.0, 300.0],
+    effectLabels: ['+50%', '+120%', '+220%', '+400%', '+900%'],
+    effectValues: [150.0, 220.0, 320.0, 500.0, 1000.0],
   );
 
   static const UpgradeDefinition refuelSpeed = UpgradeDefinition(
@@ -123,8 +123,8 @@ class UpgradeDefinitions {
     category: UpgradeCategory.tank,
     icon: Icons.bolt,
     costs: [40, 100, 200, 400, 800],
-    effectLabels: ['+10', '+25', '+40', '+60', '+100'],
-    effectValues: [10.0, 25.0, 40.0, 60.0, 100.0],
+    effectLabels: ['+20', '+50', '+90', '+150', '+300'],
+    effectValues: [20.0, 50.0, 90.0, 150.0, 300.0],
   );
 
   // ==========================================================================

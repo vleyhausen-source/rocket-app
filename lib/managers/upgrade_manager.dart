@@ -17,6 +17,7 @@ class UpgradeManager {
   bool boosterUsed = false;
   bool shieldUsed = false;
   int shieldsRemaining = 0;
+  int hullLivesRemaining = 0;   // Hüllenpanzerung: Abpraller von der Seite
   double boosterTimeRemaining = 0.0;
   bool autopilotActive = false;
   double autopilotTimeRemaining = 0.0;
@@ -191,7 +192,8 @@ class UpgradeManager {
   void initRun() {
     boosterUsed = false;
     shieldUsed = false;
-    shieldsRemaining = shieldCount.round(); // round() statt toInt() gegen Float-Truncation
+    shieldsRemaining = shieldCount.round();
+    hullLivesRemaining = hullLives.round();  // Hüllenabpraller zurücksetzen
     boosterTimeRemaining = 0.0;
     autopilotActive = false;
     autopilotTimeRemaining = 0.0;
@@ -247,6 +249,15 @@ class UpgradeManager {
     if (shieldsRemaining > 0) {
       shieldsRemaining--;
       return true; // Absturz verhindert
+    }
+    return false;
+  }
+
+  /// Hüllenpanzerung absorbiert Wandaufprall -- gibt true zurück wenn Abprall erlaubt
+  bool absorbWallHit() {
+    if (hullLivesRemaining > 0) {
+      hullLivesRemaining--;
+      return true; // Abprall statt Absturz
     }
     return false;
   }

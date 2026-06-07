@@ -137,13 +137,14 @@ class ScoreManager {
 class ScoreConstants {
   ScoreConstants._();
 
-  /// Pixel pro Meter für Höhenberechnung
-  static const double kPixelsPerMeter = 50.0;
+  /// Pixel pro Meter für Höhenberechnung.
+  /// Muss mit GameConstants.kPixelsPerMeter übereinstimmen.
+  static const double kPixelsPerMeter = 8.0;
 
   /// Zeitbonus-Punkte pro Sekunde in der Stratosphäre
   static const double kStratosphereBonusPerSecond = 10.0;
 
-  /// Ab dieser Pixelhöhe beginnt die Stratosphäre
+  /// Ab dieser Pixelhöhe beginnt die Stratosphäre (400px / 8px/m = 50m)
   static const double kStratosphereThresholdPx = 400.0;
 
   /// Punkte pro gesammeltem Coin

@@ -63,6 +63,11 @@ class HudWidget extends StatelessWidget {
                   const SizedBox(height: 8),
                   _ShieldRow(count: game.shieldsLeft),
                 ],
+                // Hüllenpanzerung (Abpraller)
+                if (game.hullLivesLeft > 0) ...[
+                  const SizedBox(height: 6),
+                  _HullRow(count: game.hullLivesLeft),
+                ],
               ],
             ),
           ),
@@ -182,6 +187,24 @@ class _ShieldRow extends StatelessWidget {
           const Padding(
             padding: EdgeInsets.only(right: 3),
             child: Icon(Icons.security, color: Colors.cyanAccent, size: 16),
+          )),
+    );
+  }
+}
+
+/// Hüllenabpraller-Anzeige (grüne Schilder-Icons)
+class _HullRow extends StatelessWidget {
+  final int count;
+  const _HullRow({required this.count});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: List.generate(count, (_) =>
+          const Padding(
+            padding: EdgeInsets.only(right: 3),
+            child: Icon(Icons.shield, color: Color(0xFF66BB6A), size: 16),
           )),
     );
   }
