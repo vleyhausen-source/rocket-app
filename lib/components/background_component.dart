@@ -76,9 +76,15 @@ class BackgroundComponent extends PositionComponent {
     _groundOffsetY += delta;
   }
 
-  /// Setzt den Kamera-Zustand zurück (neues Spiel)
+  /// Setzt den Kamera- und Atmosphären-Zustand zurück (neues Spiel)
   void resetCamera() {
     _groundOffsetY = 0.0;
+    // Atmosphäre auf Zone 1 (Troposphäre) zurücksetzen
+    _altitudeM = 0.0;
+    _currentZone = AtmosphereZones.zone1Ground;
+    _zoneLabelOpacity = 0.0;
+    _zoneLabelTimer = 0.0;
+    _zoneLabelText = '';
   }
 
   @override

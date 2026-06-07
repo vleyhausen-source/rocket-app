@@ -189,6 +189,8 @@ class AtmosphereObjectManager extends Component {
 
   // Aktuelle Höhe für Sichtbarkeit
   double _altitudeM = 0.0;
+  // Letzte bekannte Zone für Zonenwechsel-Erkennung
+  String _lastZoneName = '';
 
   AtmosphereObjectManager({
     required double screenWidth,
@@ -210,9 +212,38 @@ class AtmosphereObjectManager extends Component {
     _altitudeM = altitudeM;
   }
 
+  /// Vollständiger Reset für Neustart (alle Wolken/Vögel entfernen, neu spawnen)
+  void reset() {
+    // Alle aktuellen Kinder (Wolken + Vögel) entfernen
+    removeAll(children.toList());
+    _cloudSpawnTimer = 0.0;
+    _birdSpawnTimer = 0.0;
+    _altitudeM = 0.0;
+    _lastZoneName = '';
+    // Frische initiale Wolken spawnen
+    for (int i = 0; i < 5; i++) {
+      _spawnCloud(initial: true);
+    }
+  }
+
   @override
   void update(double dt) {
     super.update(dt);
+
+    final AtmosphereZone currentZone = AtmosphereZones.forAltitude(_altitudeM);
+
+    // Zonenwechsel: ab Zone 3+ alle Wolken sofort entfernen
+    if (currentZone.name != _lastZoneName) {
+      _lastZoneName = currentZone.name;
+      final bool inCloudZone =
+          _altitudeM < AtmosphereZones.zone2Upper.maxAltitudeM;
+      if (!inCloudZone) {
+        // Alle Cloud-Komponenten entfernen
+        for (final child in children.whereType<CloudComponent>().toList()) {
+          child.removeFromParent();
+        }
+      }
+    }
 
     // Wolken nur in Zone 1 & 2
     if (_altitudeM < AtmosphereZones.zone2Upper.maxAltitudeM) {

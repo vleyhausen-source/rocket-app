@@ -7,8 +7,8 @@ class GameConstants {
   static const double kGravity = 9.8;
 
   /// Maximaler Schub in m/s²
-  /// Balance: netto aufwärts = 22 - 9.8 = 12.2 m/s²
-  static const double kMaxThrust = 22.0;
+  /// Balance: netto aufwärts = 14 - 9.8 = 4.2 m/s² (ruhiger, kontrollierbarer Aufstieg)
+  static const double kMaxThrust = 14.0;
 
   /// Laterale Lenkbeschleunigung (Links/Rechts-Neigung)
   static const double kLateralThrust = 12.0;
@@ -46,12 +46,12 @@ class GameConstants {
   static const double kWallMargin = 0.0;
 
   // --- Kraftstoff ---
-  /// Startkraftstoff (ohne Upgrades)
-  static const double kInitialFuel = 100.0;
+  /// Startkraftstoff (ohne Upgrades) -- Basis für ~20s Flugdauer
+  static const double kInitialFuel = 200.0;
 
   /// Kraftstoffverbrauch pro Sekunde beim Schub.
-  /// Balance: 100 / 20 = 5s Schub => ~340m Basishöhe
-  static const double kFuelBurnRate = 20.0;
+  /// Balance: 200 / 10 = 20s Schub ohne Upgrades (Anfänger-freundlich)
+  static const double kFuelBurnRate = 10.0;
 
   // --- Physik-Skalierung ---
   /// Pixel pro Meter.

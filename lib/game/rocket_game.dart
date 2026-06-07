@@ -527,6 +527,7 @@ class RocketGame extends FlameGame
     _cameraWorldY = 0.0;
     _lastCoinSpawnAltitudePx = 0.0;
     _background.resetCamera();
+    _atmosphereObjects.reset();   // Wolken/Vögel auf Zone 1 zurücksetzen
     _shieldCooldown = 0.0;
     _wallHitCooldown = 0.0;
 

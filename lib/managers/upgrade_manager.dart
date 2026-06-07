@@ -127,7 +127,7 @@ class UpgradeManager {
   /// Maximale Tankkapazität
   double get maxFuel {
     final v = valueOf(UpgradeDefinitions.tankCapacity.id);
-    return v == 0 ? 100.0 : v;
+    return v == 0 ? 200.0 : v; // Fallback = kInitialFuel
   }
 
   /// Bonus-Kraftstoff beim Start (refuelSpeed)

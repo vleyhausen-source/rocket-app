@@ -258,8 +258,8 @@ void main() {
       expect(um.fuelBurnMultiplier, equals(1.0));
     });
 
-    test('maxFuel ist 100 ohne Upgrade', () {
-      expect(um.maxFuel, equals(100.0));
+    test('maxFuel ist 200 ohne Upgrade', () {
+      expect(um.maxFuel, equals(200.0));
     });
 
     test('magnetRadius ist 0 ohne Upgrade', () {
