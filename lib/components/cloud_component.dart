@@ -9,6 +9,9 @@ class CloudComponent extends PositionComponent {
   final List<_CloudPuff> _puffs;
   final Paint _cloudPaint;
 
+  // --- Basis-Opazität (beim Spawn zufällig gesetzt) ---
+  final double _baseOpacity;
+
   // --- Bewegung ---
   final double _driftSpeed; // horizontale Drift in px/s
 
@@ -25,9 +28,17 @@ class CloudComponent extends PositionComponent {
   })  : _puffs = puffs,
         _driftSpeed = driftSpeed,
         _screenWidth = screenWidth,
+        _baseOpacity = opacity,
         _cloudPaint = Paint()
           ..color = Colors.white.withValues(alpha: opacity),
         super(position: position, size: size);
+
+  /// Setzt einen Fade-Faktor (0.0 = unsichtbar, 1.0 = volle Opazität).
+  /// Wird vom AtmosphereObjectManager pro Frame aufgerufen.
+  void setFadeFactor(double factor) {
+    _cloudPaint.color =
+        Colors.white.withValues(alpha: (_baseOpacity * factor).clamp(0.0, 1.0));
+  }
 
   factory CloudComponent.random({
     required Random rnd,
@@ -189,8 +200,6 @@ class AtmosphereObjectManager extends Component {
 
   // Aktuelle Höhe für Sichtbarkeit
   double _altitudeM = 0.0;
-  // Letzte bekannte Zone für Zonenwechsel-Erkennung
-  String _lastZoneName = '';
 
   AtmosphereObjectManager({
     required double screenWidth,
@@ -214,13 +223,10 @@ class AtmosphereObjectManager extends Component {
 
   /// Vollständiger Reset für Neustart (alle Wolken/Vögel entfernen, neu spawnen)
   void reset() {
-    // Alle aktuellen Kinder (Wolken + Vögel) entfernen
     removeAll(children.toList());
     _cloudSpawnTimer = 0.0;
     _birdSpawnTimer = 0.0;
     _altitudeM = 0.0;
-    _lastZoneName = '';
-    // Frische initiale Wolken spawnen
     for (int i = 0; i < 5; i++) {
       _spawnCloud(initial: true);
     }
@@ -230,23 +236,31 @@ class AtmosphereObjectManager extends Component {
   void update(double dt) {
     super.update(dt);
 
-    final AtmosphereZone currentZone = AtmosphereZones.forAltitude(_altitudeM);
+    // --- Sanfter Wolken-Fade mit der Höhe ---
+    // 0-2000m: volle Opazität (Faktor 1.0)
+    // 2000-5000m: linear von 1.0 auf 0.0
+    // 5000m+: unsichtbar (Faktor 0.0)
+    const double kFadeStart = 2000.0;
+    const double kFadeEnd   = 5000.0;
+    final double fadeFactor = _altitudeM <= kFadeStart
+        ? 1.0
+        : _altitudeM >= kFadeEnd
+            ? 0.0
+            : 1.0 - (_altitudeM - kFadeStart) / (kFadeEnd - kFadeStart);
 
-    // Zonenwechsel: ab Zone 3+ alle Wolken sofort entfernen
-    if (currentZone.name != _lastZoneName) {
-      _lastZoneName = currentZone.name;
-      final bool inCloudZone =
-          _altitudeM < AtmosphereZones.zone2Upper.maxAltitudeM;
-      if (!inCloudZone) {
-        // Alle Cloud-Komponenten entfernen
-        for (final child in children.whereType<CloudComponent>().toList()) {
-          child.removeFromParent();
-        }
+    for (final cloud in children.whereType<CloudComponent>()) {
+      cloud.setFadeFactor(fadeFactor);
+    }
+
+    // Unsichtbare Wolken (voll ausgefadet) entfernen
+    if (fadeFactor <= 0.0) {
+      for (final child in children.whereType<CloudComponent>().toList()) {
+        child.removeFromParent();
       }
     }
 
-    // Wolken nur in Zone 1 & 2
-    if (_altitudeM < AtmosphereZones.zone2Upper.maxAltitudeM) {
+    // Wolken nur spawnen wenn noch sichtbar (unter Fade-End-Grenze)
+    if (_altitudeM < kFadeEnd) {
       _cloudSpawnTimer += dt;
       if (_cloudSpawnTimer >= kCloudInterval) {
         _cloudSpawnTimer = 0;
