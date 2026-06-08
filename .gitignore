@@ -40,7 +40,7 @@ analysis_benchmark.json
 .packages
 .pub-preload-cache/
 .pub/
-build/
+build/*
 # APK-Releases werden versioniert
 !build/release/
 !build/release/*.apk
