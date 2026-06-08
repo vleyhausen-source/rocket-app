@@ -4,7 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:rocket_app/game/atmosphere_zone.dart';
 import 'package:rocket_app/game/game_constants.dart';
 
-/// Dynamischer Hintergrund mit Zonen-basiertem Atmosphären-System
+/// Dynamischer Hintergrund mit Zonen-basiertem Atmosphären-System.
+/// Sterne werden jetzt mit Kenney `star.png` gerendert.
+/// Meteore erscheinen als dekorative `meteor_*.png` Sprites.
 class BackgroundComponent extends PositionComponent {
   // --- Sterne ---
   final List<_Star> _stars = [];
@@ -15,7 +17,6 @@ class BackgroundComponent extends PositionComponent {
   AtmosphereZone _currentZone = AtmosphereZones.zone1Ground;
 
   // --- Kamera/Scrolling: Boden-Y relativ zum Bildschirm ---
-  /// Wie weit der Boden vom unteren Bildschirmrand entfernt ist (scrollt nach unten = groesser)
   double _groundOffsetY = 0.0;
 
   // --- Boden ---
@@ -28,9 +29,20 @@ class BackgroundComponent extends PositionComponent {
 
   // --- Zone-Label ---
   String _zoneLabelText = '';
-  double _zoneLabelOpacity = 0.0; // Einblend-Animation
+  double _zoneLabelOpacity = 0.0;
   double _zoneLabelTimer = 0.0;
-  static const double kLabelDuration = 3.0; // Sekunden sichtbar
+  static const double kLabelDuration = 3.0;
+
+  // --- Sprite-Assets (Kenney CC0) ---
+  Sprite? _starSprite;
+  Sprite? _meteorSprite1;
+  Sprite? _meteorSprite2;
+
+  // --- Meteore ---
+  final List<MeteorComponent> _meteors = [];
+  double _meteorSpawnTimer = 0.0;
+  static const double kMeteorInterval = 5.0;
+  static const double kMeteorMinAltitudeM = 500.0; // Erst ab Zone 2
 
   BackgroundComponent({required Vector2 screenSize})
       : super(size: screenSize, position: Vector2.zero());
@@ -39,10 +51,13 @@ class BackgroundComponent extends PositionComponent {
   Future<void> onLoad() async {
     await super.onLoad();
     _generateStars();
+    // Kenney-Sprites laden
+    _starSprite = await Sprite.load('star.png');
+    _meteorSprite1 = await Sprite.load('meteor_1.png');
+    _meteorSprite2 = await Sprite.load('meteor_2.png');
   }
 
   void _generateStars() {
-    // 200 Sterne für dichte Weltraumatmosphäre
     for (int i = 0; i < 200; i++) {
       _stars.add(_Star(
         x: _rnd.nextDouble() * size.x,
@@ -70,21 +85,25 @@ class BackgroundComponent extends PositionComponent {
     _altitudeM = altitudeM;
   }
 
-  /// Wird vom Kamera-System aufgerufen wenn die Welt scrollt.
-  /// Der Boden bewegt sich nach unten (scrollt aus dem Bild wenn Rakete hoch genug).
+  /// Wird vom Kamera-System aufgerufen wenn die Welt scrollt
   void scroll(double delta) {
     _groundOffsetY += delta;
   }
 
-  /// Setzt den Kamera- und Atmosphären-Zustand zurück (neues Spiel)
+  /// Setzt den Kamera- und Atmosphären-Zustand zurück
   void resetCamera() {
     _groundOffsetY = 0.0;
-    // Atmosphäre auf Zone 1 (Troposphäre) zurücksetzen
     _altitudeM = 0.0;
     _currentZone = AtmosphereZones.zone1Ground;
     _zoneLabelOpacity = 0.0;
     _zoneLabelTimer = 0.0;
     _zoneLabelText = '';
+    _meteorSpawnTimer = 0.0;
+    // Meteore entfernen
+    for (final m in _meteors.toList()) {
+      m.removeFromParent();
+    }
+    _meteors.clear();
   }
 
   @override
@@ -95,7 +114,6 @@ class BackgroundComponent extends PositionComponent {
     if (_zoneLabelTimer > 0) {
       _zoneLabelTimer -= dt;
       if (_zoneLabelTimer <= 1.0) {
-        // In letzter Sekunde ausblenden
         _zoneLabelOpacity = _zoneLabelTimer.clamp(0.0, 1.0);
       }
     }
@@ -104,6 +122,36 @@ class BackgroundComponent extends PositionComponent {
     for (final star in _stars) {
       star.twinklePhase += star.twinkleSpeed * dt;
     }
+
+    // Meteore spawnen in Zone 2+
+    if (_altitudeM >= kMeteorMinAltitudeM) {
+      _meteorSpawnTimer += dt;
+      if (_meteorSpawnTimer >= kMeteorInterval) {
+        _meteorSpawnTimer = 0;
+        _spawnMeteor();
+      }
+    }
+
+    // Meteore updaten und aufräumen
+    for (final m in _meteors.toList()) {
+      if (!m.isMounted) {
+        _meteors.remove(m);
+      }
+    }
+  }
+
+  void _spawnMeteor() {
+    final Sprite sprite =
+        _rnd.nextBool() ? _meteorSprite1! : _meteorSprite2!;
+    final meteor = MeteorComponent.random(
+      rnd: _rnd,
+      screenWidth: size.x,
+      screenHeight: size.y,
+      sprite: sprite,
+    );
+    _meteors.add(meteor);
+    // Meteore werden als Kinder des BackgroundComponent eingefügt
+    add(meteor);
   }
 
   @override
@@ -116,10 +164,9 @@ class BackgroundComponent extends PositionComponent {
     }
   }
 
-  /// Himmelgradient passend zur aktuellen Zone -- deckt die gesamte Bildschirmfläche ab
+  /// Himmelgradient passend zur aktuellen Zone
   void _renderSky(Canvas canvas) {
     final List<Color> colors = AtmosphereZones.interpolatedColors(_altitudeM);
-    // Volle Bildschirmhöhe -- kein schwarzer Streifen am unteren Rand
     final Rect skyRect = Rect.fromLTWH(0, 0, size.x, size.y);
 
     final Paint skyPaint = Paint()
@@ -132,12 +179,11 @@ class BackgroundComponent extends PositionComponent {
     canvas.drawRect(skyRect, skyPaint);
   }
 
-  /// Sterne - Dichte abhängig von Zone
+  /// Sterne mit Kenney `star.png` rendern
   void _renderStars(Canvas canvas) {
     final double density = AtmosphereZones.forAltitude(_altitudeM).starDensity;
     if (density <= 0) return;
 
-    // Wie viele Sterne sollen sichtbar sein
     final int visibleCount = (_stars.length * density).round();
 
     for (int i = 0; i < visibleCount && i < _stars.length; i++) {
@@ -146,46 +192,48 @@ class BackgroundComponent extends PositionComponent {
           (sin(star.twinklePhase + star.twinkleOffset) * 0.3 + 0.7);
       final double alpha = (star.brightness * twinkle * density).clamp(0.0, 1.0);
 
-      final Paint starPaint = Paint()
-        ..color = Colors.white.withValues(alpha: alpha);
-      canvas.drawCircle(Offset(star.x, star.y), star.radius, starPaint);
+      // Stern-Sprite rendern mit Opazität
+      final double starSize = star.radius * 3.5; // Sprite etwas größer als Kreis
+      _starSprite?.render(
+        canvas,
+        position: Vector2(star.x - starSize / 2, star.y - starSize / 2),
+        size: Vector2.all(starSize),
+        overridePaint: Paint()..color = Colors.white.withAlpha((alpha * 255).round()),
+      );
     }
   }
 
-  /// Boden mit Startrampe (scrollt mit der Kamera nach unten)
+  /// Boden mit Startrampe
   void _renderGround(Canvas canvas) {
-    final double groundY = size.y - GameConstants.kGroundHeight + _groundOffsetY;
+    final double groundY =
+        size.y - GameConstants.kGroundHeight + _groundOffsetY;
 
-    // Boden ist ausserhalb des Bildschirms -- nicht rendern
     if (groundY >= size.y) return;
 
-    // Bodenfläche
     canvas.drawRect(
       Rect.fromLTWH(0, groundY, size.x, GameConstants.kGroundHeight),
       _groundPaint,
     );
 
-    // Trennlinie
     canvas.drawLine(
       Offset(0, groundY),
       Offset(size.x, groundY),
       _groundLinePaint,
     );
 
-    // Startrampe (nur sichtbar wenn Boden auf Screen)
     final double cx = size.x / 2;
     canvas.drawRect(Rect.fromLTWH(cx - 40, groundY - 8, 80, 8), _padPaint);
     canvas.drawCircle(Offset(cx - 35, groundY - 10), 4, _padLightPaint);
     canvas.drawCircle(Offset(cx + 35, groundY - 10), 4, _padLightPaint);
   }
 
-  /// Zonen-Einblend-Label (z.B. "STRATOSPHÄRE")
+  /// Zonen-Einblend-Label
   void _renderZoneLabel(Canvas canvas) {
     final TextPainter tp = TextPainter(
       text: TextSpan(
         text: _zoneLabelText,
         style: TextStyle(
-          color: Colors.white.withValues(alpha: _zoneLabelOpacity * 0.85),
+          color: Colors.white.withAlpha((_zoneLabelOpacity * 0.85 * 255).round()),
           fontSize: 22,
           fontWeight: FontWeight.bold,
           letterSpacing: 6,
@@ -219,4 +267,73 @@ class _Star {
     required this.twinkleSpeed,
     required this.twinkleOffset,
   });
+}
+
+/// Dekorativer Meteor – gerendert mit Kenney `meteor_*.png`
+class MeteorComponent extends SpriteComponent {
+  final double _speedX;
+  final double _speedY;
+  final double _screenWidth;
+  final double _screenHeight;
+
+  MeteorComponent._({
+    required Vector2 position,
+    required Vector2 size,
+    required Sprite sprite,
+    required double speedX,
+    required double speedY,
+    required double screenWidth,
+    required double screenHeight,
+  })  : _speedX = speedX,
+        _speedY = speedY,
+        _screenWidth = screenWidth,
+        _screenHeight = screenHeight,
+        super(
+          position: position,
+          size: size,
+          sprite: sprite,
+          anchor: Anchor.center,
+        );
+
+  /// Erzeugt einen zufälligen Meteor am oberen Bildschirmrand
+  factory MeteorComponent.random({
+    required Random rnd,
+    required double screenWidth,
+    required double screenHeight,
+    required Sprite sprite,
+  }) {
+    final double meteorSize = rnd.nextDouble() * 20 + 15;
+    final double x = rnd.nextDouble() * screenWidth;
+    final double y = -meteorSize; // Oberhalb des Bildschirms starten
+
+    // Diagonal nach unten fliegen
+    final double angle = (rnd.nextDouble() * 0.6 + 0.7) * pi; // ~120-150°
+    final double speed = rnd.nextDouble() * 80 + 50;
+    final double vx = cos(angle) * speed;
+    final double vy = sin(angle) * speed; // immer positiv = nach unten
+
+    return MeteorComponent._(
+      position: Vector2(x, y),
+      size: Vector2.all(meteorSize),
+      sprite: sprite,
+      speedX: vx,
+      speedY: vy,
+      screenWidth: screenWidth,
+      screenHeight: screenHeight,
+    );
+  }
+
+  @override
+  void update(double dt) {
+    super.update(dt);
+    position.x += _speedX * dt;
+    position.y += _speedY * dt;
+
+    // Außerhalb des Bildschirms → entfernen
+    if (position.y > _screenHeight + size.y ||
+        position.x < -size.x ||
+        position.x > _screenWidth + size.x) {
+      removeFromParent();
+    }
+  }
 }

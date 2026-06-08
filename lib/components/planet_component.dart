@@ -2,19 +2,15 @@ import 'dart:math';
 import 'package:flame/components.dart';
 import 'package:flutter/material.dart';
 
-/// Dekorativer Planet im Weltraum-Hintergrund (Zone 4)
-class PlanetComponent extends PositionComponent {
-  final Color _baseColor;
+/// Dekorativer Planet im Weltraum-Hintergrund (Zone 4).
+/// Gerendert mit Kenney `planet_1.png` Sprite + optionalem Ring und Mond.
+class PlanetComponent extends SpriteComponent {
   final Color _ringColor;
   final bool _hasRing;
   final bool _hasMoon;
-  final double _glowRadius;
 
-  late final Paint _planetPaint;
-  late final Paint _glowPaint;
   late final Paint _ringPaint;
   late final Paint _moonPaint;
-  late final Paint _shadowPaint;
 
   // Langsame Rotation für Planeten-Ring
   double _rotation = 0.0;
@@ -23,46 +19,38 @@ class PlanetComponent extends PositionComponent {
   PlanetComponent._({
     required Vector2 position,
     required double radius,
-    required Color baseColor,
+    required Sprite sprite,
     required Color ringColor,
     required bool hasRing,
     required bool hasMoon,
     required double rotationSpeed,
-  })  : _baseColor = baseColor,
-        _ringColor = ringColor,
+  })  : _ringColor = ringColor,
         _hasRing = hasRing,
         _hasMoon = hasMoon,
-        _glowRadius = radius * 1.4,
         _rotationSpeed = rotationSpeed,
         super(
           position: position,
           size: Vector2.all(radius * 2),
+          sprite: sprite,
           anchor: Anchor.center,
         );
 
-  /// Erstellt einen zufälligen Planeten
-  factory PlanetComponent.random({
+  /// Erstellt einen zufälligen Planeten mit `planet_1.png` Sprite
+  static Future<PlanetComponent> random({
     required Random rnd,
     required double screenWidth,
     required double screenHeight,
-  }) {
-    const List<Color> planetColors = [
-      Color(0xFF8D6E63), // Braun (Erde-ähnlich)
-      Color(0xFFE57373), // Rot (Mars-ähnlich)
-      Color(0xFF81C784), // Grün
-      Color(0xFF64B5F6), // Blau
-      Color(0xFFFFB74D), // Orange (Jupiter-ähnlich)
-      Color(0xFFCE93D8), // Lila
-    ];
+  }) async {
     const List<Color> ringColors = [
       Color(0xFFBCAAA4),
       Color(0xFFFFCC02),
       Color(0xFF80DEEA),
     ];
 
-    final Color base = planetColors[rnd.nextInt(planetColors.length)];
     final Color ring = ringColors[rnd.nextInt(ringColors.length)];
     final double radius = rnd.nextDouble() * 35 + 20;
+
+    final Sprite sprite = await Sprite.load('planet_1.png');
 
     return PlanetComponent._(
       position: Vector2(
@@ -70,7 +58,7 @@ class PlanetComponent extends PositionComponent {
         rnd.nextDouble() * screenHeight * 0.6 + screenHeight * 0.05,
       ),
       radius: radius,
-      baseColor: base,
+      sprite: sprite,
       ringColor: ring,
       hasRing: rnd.nextDouble() > 0.5,
       hasMoon: rnd.nextDouble() > 0.4,
@@ -83,18 +71,12 @@ class PlanetComponent extends PositionComponent {
     await super.onLoad();
     final double r = size.x / 2;
 
-    _planetPaint = Paint()..color = _baseColor;
-    _glowPaint = Paint()
-      ..color = _baseColor.withValues(alpha: 0.2)
-      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 12);
     _ringPaint = Paint()
-      ..color = _ringColor.withValues(alpha: 0.6)
+      ..color = _ringColor.withAlpha(153) // alpha 0.6
       ..style = PaintingStyle.stroke
       ..strokeWidth = r * 0.25;
     _moonPaint = Paint()
       ..color = const Color(0xFFBDBDBD);
-    _shadowPaint = Paint()
-      ..color = Colors.black.withValues(alpha: 0.35);
   }
 
   @override
@@ -105,30 +87,18 @@ class PlanetComponent extends PositionComponent {
 
   @override
   void render(Canvas canvas) {
+    // SpriteComponent rendert das planet_1.png automatisch
+    super.render(canvas);
+
     final double r = size.x / 2;
     final Offset center = Offset(r, r);
 
-    // Glow
-    canvas.drawCircle(center, _glowRadius, _glowPaint);
-
-    // Planet-Körper
-    canvas.drawCircle(center, r, _planetPaint);
-
-    // Atmosphären-Schatten (Dunkel rechts)
-    canvas.drawArc(
-      Rect.fromCircle(center: center, radius: r),
-      -pi / 4,
-      pi * 1.5,
-      false,
-      _shadowPaint,
-    );
-
-    // Ring (hinter & vor dem Planeten)
+    // Ring (hinter & vor dem Planeten, abgeflacht)
     if (_hasRing) {
       canvas.save();
       canvas.translate(center.dx, center.dy);
       canvas.rotate(_rotation);
-      canvas.scale(1.0, 0.3); // abgeflacht
+      canvas.scale(1.0, 0.3);
       canvas.drawCircle(Offset.zero, r * 1.6, _ringPaint);
       canvas.restore();
     }
@@ -153,6 +123,7 @@ class PlanetLayer extends Component {
   final double _screenWidth;
   final double _screenHeight;
   bool _spawned = false;
+  bool _loading = false;
 
   PlanetLayer({required double screenWidth, required double screenHeight})
       : _screenWidth = screenWidth,
@@ -160,10 +131,10 @@ class PlanetLayer extends Component {
 
   /// Wird sichtbar wenn Zone 4 erreicht
   void setVisible(bool visible) {
-    if (visible && !_spawned) {
+    if (visible && !_spawned && !_loading) {
+      _loading = true;
       _spawnPlanets();
-      _spawned = true;
-      return; // Beim ersten Spawn direkt sichtbar
+      return;
     }
     // Planeten zum Component-Tree hinzufügen oder entfernen
     for (final p in _planets) {
@@ -175,10 +146,10 @@ class PlanetLayer extends Component {
     }
   }
 
-  void _spawnPlanets() {
+  Future<void> _spawnPlanets() async {
     const int count = 4;
     for (int i = 0; i < count; i++) {
-      final planet = PlanetComponent.random(
+      final planet = await PlanetComponent.random(
         rnd: _rnd,
         screenWidth: _screenWidth,
         screenHeight: _screenHeight,
@@ -186,5 +157,7 @@ class PlanetLayer extends Component {
       _planets.add(planet);
       add(planet);
     }
+    _spawned = true;
+    _loading = false;
   }
 }
