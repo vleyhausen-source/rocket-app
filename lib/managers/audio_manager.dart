@@ -19,13 +19,14 @@ class AudioManager {
   /// Da wir keine echten Sounddateien haben, arbeiten wir mit einem
   /// graceful-fallback: Fehler werden still ignoriert.
   static const List<String> kRequiredFiles = [
-    'wind_light.mp3',
-    'wind_high.mp3',
-    'space_hum.mp3',
-    'space_deep.mp3',
-    'coin_collect.mp3',
-    'rocket_thrust.mp3',
-    'crash.mp3',
+    'wind_light.wav',
+    'wind_high.wav',
+    'space_hum.wav',
+    'space_deep.wav',
+    'coin_collect.wav',
+    'thrust_loop.wav',
+    'explosion.wav',
+    'upgrade.wav',
   ];
 
   /// Initialisiert den Audio-Cache (lädt Dateien vor wenn vorhanden)
@@ -69,7 +70,7 @@ class AudioManager {
   Future<void> playCoinCollect() async {
     if (!_enabled) return;
     try {
-      await FlameAudio.play('coin_collect.mp3', volume: kSfxVolume);
+      await FlameAudio.play('coin_collect.wav', volume: kSfxVolume);
     } catch (_) {}
   }
 
@@ -77,7 +78,7 @@ class AudioManager {
   Future<void> startThrustSound() async {
     if (!_enabled) return;
     try {
-      await FlameAudio.loopLongAudio('rocket_thrust.mp3', volume: 0.4);
+      await FlameAudio.loopLongAudio('thrust_loop.wav', volume: 0.4);
     } catch (_) {}
   }
 
@@ -94,8 +95,16 @@ class AudioManager {
     if (!_enabled) return;
     try {
       await FlameAudio.bgm.stop();
-      await FlameAudio.play('crash.mp3', volume: kSfxVolume);
+      await FlameAudio.play('explosion.wav', volume: kSfxVolume);
       _currentAmbient = null;
+    } catch (_) {}
+  }
+
+  /// Upgrade-Kauf-Sound
+  Future<void> playUpgrade() async {
+    if (!_enabled) return;
+    try {
+      await FlameAudio.play('upgrade.wav', volume: kSfxVolume);
     } catch (_) {}
   }
 
