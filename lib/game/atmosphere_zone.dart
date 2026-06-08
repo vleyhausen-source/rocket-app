@@ -77,7 +77,7 @@ class AtmosphereZones {
     showClouds: true,
     showBirds: true,
     showPlanets: false,
-    ambientSound: 'wind_light.wav',
+    ambientSound: null,
   );
 
   /// Zone 2: Obere Atmosphäre (500-2000 m)
@@ -92,7 +92,7 @@ class AtmosphereZones {
     showClouds: true,
     showBirds: false,
     showPlanets: false,
-    ambientSound: 'wind_high.wav',
+    ambientSound: null,
   );
 
   /// Zone 3: Stratosphäre (2000-10000 m)
@@ -107,7 +107,7 @@ class AtmosphereZones {
     showClouds: false,
     showBirds: false,
     showPlanets: false,
-    ambientSound: 'space_hum.wav',
+    ambientSound: null,
   );
 
   /// Zone 4: Weltraum (10000 m+)
@@ -122,7 +122,7 @@ class AtmosphereZones {
     showClouds: false,
     showBirds: false,
     showPlanets: true,
-    ambientSound: 'space_deep.wav',
+    ambientSound: null,
   );
 
   static const List<AtmosphereZone> all = [

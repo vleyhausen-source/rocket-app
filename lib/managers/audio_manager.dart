@@ -19,10 +19,6 @@ class AudioManager {
   /// Da wir keine echten Sounddateien haben, arbeiten wir mit einem
   /// graceful-fallback: Fehler werden still ignoriert.
   static const List<String> kRequiredFiles = [
-    'wind_light.wav',
-    'wind_high.wav',
-    'space_hum.wav',
-    'space_deep.wav',
     'coin_collect.wav',
     'thrust_loop.wav',
     'explosion.wav',
