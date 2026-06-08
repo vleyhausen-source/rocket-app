@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:rocket_app/managers/audio_manager.dart';
 import 'package:rocket_app/managers/score_manager.dart';
 import 'package:rocket_app/managers/upgrade_manager.dart';
 import 'package:rocket_app/models/upgrade_model.dart';
@@ -56,7 +57,7 @@ class _ShopScreenState extends State<ShopScreen>
 
     if (mounted) {
       setState(() => _purchasingIds.remove(upg.id));
-      if (success) _showPurchaseSuccess(upg.name);
+      if (success) {_showPurchaseSuccess(upg.name); AudioManager.instance.playUpgrade();}
     }
   }
 
