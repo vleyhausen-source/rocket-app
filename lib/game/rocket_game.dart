@@ -549,6 +549,8 @@ class RocketGame extends FlameGame
     if (phase != GamePhase.ready) return;
     phase = GamePhase.playing;
     _rocket.launch();
+    // Schub-Sound beim Start des Fluges starten
+    _audioManager.startThrustSound();
     onStateChange?.call();
   }
 

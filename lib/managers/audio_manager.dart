@@ -11,6 +11,10 @@ class AudioManager {
   bool _enabled = true;
   bool _initialized = false;
 
+  /// Dedizierter Player für den Schub-Loop (damit er gezielt gestoppt werden kann)
+  AudioPlayer? _thrustPlayer;
+  bool _thrustPlaying = false;
+
   /// Soundeffekt-Lautstärken
   static const double kAmbientVolume = 0.35;
   static const double kSfxVolume = 0.7;
@@ -70,24 +74,34 @@ class AudioManager {
     } catch (_) {}
   }
 
-  /// Schub-Sound (Looping)
+  /// Schub-Sound starten (Loop) -- idempotent: kein Neustart wenn bereits läuft
   Future<void> startThrustSound() async {
-    if (!_enabled) return;
+    if (!_enabled || _thrustPlaying) return;
     try {
-      await FlameAudio.loopLongAudio('thrust_loop.wav', volume: 0.4);
-    } catch (_) {}
+      _thrustPlayer = await FlameAudio.loopLongAudio(
+        'thrust_loop.wav',
+        volume: 0.4,
+      );
+      _thrustPlaying = true;
+    } catch (_) {
+      // Datei fehlt oder Playback-Fehler -- still ignorieren
+    }
   }
 
-  /// Schub-Sound stoppen
+  /// Schub-Sound stoppen -- nur den dedizierten Player, kein clearAll()
   Future<void> stopThrustSound() async {
-    if (!_enabled) return;
+    if (!_thrustPlaying) return;
     try {
-      await FlameAudio.audioCache.clearAll();
+      await _thrustPlayer?.stop();
+      await _thrustPlayer?.dispose();
     } catch (_) {}
+    _thrustPlayer = null;
+    _thrustPlaying = false;
   }
 
   /// Absturz-Sound
   Future<void> playCrash() async {
+    await stopThrustSound();
     if (!_enabled) return;
     try {
       await FlameAudio.bgm.stop();
@@ -106,6 +120,7 @@ class AudioManager {
 
   /// Alles stoppen (beim Neustart)
   Future<void> stopAll() async {
+    await stopThrustSound();
     if (!_enabled) return;
     try {
       await FlameAudio.bgm.stop();
@@ -117,6 +132,7 @@ class AudioManager {
   void setEnabled(bool enabled) {
     _enabled = enabled;
     if (!enabled) {
+      stopThrustSound();
       FlameAudio.bgm.stop().catchError((_) {});
     }
   }
