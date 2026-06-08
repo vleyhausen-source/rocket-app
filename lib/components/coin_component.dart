@@ -1,14 +1,15 @@
 import 'dart:math';
 import 'package:flame/collisions.dart';
 import 'package:flame/components.dart';
+import 'package:flutter/material.dart';
 import 'package:rocket_app/managers/score_manager.dart';
 
 /// Callback wenn ein Coin eingesammelt wird
 typedef CoinCollectedCallback = void Function(int value);
 
-/// Ein Coin im Spielfeld – gerendert mit Kenney-Sprite-Assets
-class CoinComponent extends SpriteComponent with CollisionCallbacks {
-  /// Wert dieses Coins (1 = Gold, 2 = Blau, 3 = Lila)
+/// Ein Coin im Spielfeld
+class CoinComponent extends PositionComponent with CollisionCallbacks {
+  /// Wert dieses Coins (1 = normal, 2 = doppelt, 3 = dreifach)
   final int value;
 
   /// Callback wenn eingesammelt
@@ -18,11 +19,14 @@ class CoinComponent extends SpriteComponent with CollisionCallbacks {
   double _pulseTimer = 0.0;
   bool _collected = false;
 
-  /// Kollisionsradius (unabhängig vom Sprite-Skalierungsradius)
-  static const double kCoinRadius = 12.0;
+  // --- Farben nach Wert ---
+  late final Paint _coinPaint;
+  late final Paint _glowPaint;
 
-  /// Optischer Radius des Sprites (kann größer sein als Hitbox)
-  static const double kSpriteRadius = 16.0;
+  // Gecachter TextPainter -- einmal in onLoad() gebaut, nie neu allokiert
+  late final TextPainter _symbolPainter;
+
+  static const double kCoinRadius = 12.0;
 
   CoinComponent({
     required Vector2 position,
@@ -30,7 +34,7 @@ class CoinComponent extends SpriteComponent with CollisionCallbacks {
     this.onCollected,
   }) : super(
           position: position,
-          size: Vector2.all(kSpriteRadius * 2),
+          size: Vector2.all(kCoinRadius * 2),
           anchor: Anchor.center,
         );
 
@@ -38,15 +42,32 @@ class CoinComponent extends SpriteComponent with CollisionCallbacks {
   Future<void> onLoad() async {
     await super.onLoad();
 
-    // Kenney Coin-Sprite je nach Wert laden
-    final String asset = switch (value) {
-      1 => 'coin_gold.png',
-      2 => 'coin_blue.png',
-      _ => 'coin_purple.png',
+    // Farbe nach Wert: 1=Gold, 2=Silber-Blau, 3=Lila
+    final Color baseColor = switch (value) {
+      1 => const Color(0xFFFFD700),
+      2 => const Color(0xFF4FC3F7),
+      _ => const Color(0xFFCE93D8),
     };
-    sprite = await Sprite.load(asset);
 
-    // Kollisionsbox (Kreis, etwas kleiner als Sprite für faires Treffen)
+    _coinPaint = Paint()..color = baseColor;
+    _glowPaint = Paint()
+      ..color = baseColor.withValues(alpha: 0.35)
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8);
+
+    // Symbol einmalig layouten und cachen (Wert ändert sich nie)
+    _symbolPainter = TextPainter(
+      text: TextSpan(
+        text: value == 1 ? '¢' : value == 2 ? '©' : '★',
+        style: TextStyle(
+          color: Colors.white.withValues(alpha: 0.9),
+          fontSize: kCoinRadius * 1.1,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+      textDirection: TextDirection.ltr,
+    )..layout();
+
+    // Kollisionsbox (Kreis)
     add(CircleHitbox(radius: kCoinRadius));
   }
 
@@ -56,8 +77,28 @@ class CoinComponent extends SpriteComponent with CollisionCallbacks {
     if (_collected) return;
     // Leichtes Pulsieren (Scale-Animation via Timer)
     _pulseTimer += dt * 2.5;
+  }
+
+  @override
+  void render(Canvas canvas) {
+    if (_collected) return;
+
     final double pulse = 1.0 + sin(_pulseTimer) * 0.08;
-    scale = Vector2.all(pulse);
+    final double r = kCoinRadius * pulse;
+    const Offset center = Offset(kCoinRadius, kCoinRadius);
+
+    // Leuchten (Glow)
+    canvas.drawCircle(center, r + 4, _glowPaint);
+
+    // Hauptkörper
+    canvas.drawCircle(center, r, _coinPaint);
+
+    // Symbol: gecachter TextPainter (keine Allokation per Frame)
+    _symbolPainter.paint(
+      canvas,
+      Offset(center.dx - _symbolPainter.width / 2,
+             center.dy - _symbolPainter.height / 2),
+    );
   }
 
   /// Wird aufgerufen wenn die Rakete den Coin berührt
@@ -85,8 +126,7 @@ class CoinSpawner {
     final double playableHeight = screenHeight - groundHeight;
 
     // Edge case: Spielfeld zu klein -- keine Coins spawnen
-    final double maxSpawnRange =
-        playableHeight - ScoreConstants.kCoinMinHeightPx;
+    final double maxSpawnRange = playableHeight - ScoreConstants.kCoinMinHeightPx;
     if (maxSpawnRange <= 0) return result;
 
     for (int i = 0; i < count; i++) {

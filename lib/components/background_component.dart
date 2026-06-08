@@ -4,8 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:rocket_app/game/atmosphere_zone.dart';
 import 'package:rocket_app/game/game_constants.dart';
 
-/// Dynamischer Hintergrund mit Zonen-basiertem Atmosphären-System.
-/// Sterne werden mit `star.png` gerendert.
+/// Dynamischer Hintergrund mit Zonen-basiertem Atmosphären-System
 class BackgroundComponent extends PositionComponent {
   // --- Sterne ---
   final List<_Star> _stars = [];
@@ -16,6 +15,7 @@ class BackgroundComponent extends PositionComponent {
   AtmosphereZone _currentZone = AtmosphereZones.zone1Ground;
 
   // --- Kamera/Scrolling: Boden-Y relativ zum Bildschirm ---
+  /// Wie weit der Boden vom unteren Bildschirmrand entfernt ist (scrollt nach unten = groesser)
   double _groundOffsetY = 0.0;
 
   // --- Boden ---
@@ -28,12 +28,9 @@ class BackgroundComponent extends PositionComponent {
 
   // --- Zone-Label ---
   String _zoneLabelText = '';
-  double _zoneLabelOpacity = 0.0;
+  double _zoneLabelOpacity = 0.0; // Einblend-Animation
   double _zoneLabelTimer = 0.0;
-  static const double kLabelDuration = 3.0;
-
-  // --- Sprite-Assets ---
-  Sprite? _starSprite;
+  static const double kLabelDuration = 3.0; // Sekunden sichtbar
 
   BackgroundComponent({required Vector2 screenSize})
       : super(size: screenSize, position: Vector2.zero());
@@ -42,11 +39,10 @@ class BackgroundComponent extends PositionComponent {
   Future<void> onLoad() async {
     await super.onLoad();
     _generateStars();
-    // Stern-Sprite laden
-    _starSprite = await Sprite.load('star.png');
   }
 
   void _generateStars() {
+    // 200 Sterne für dichte Weltraumatmosphäre
     for (int i = 0; i < 200; i++) {
       _stars.add(_Star(
         x: _rnd.nextDouble() * size.x,
@@ -74,14 +70,16 @@ class BackgroundComponent extends PositionComponent {
     _altitudeM = altitudeM;
   }
 
-  /// Wird vom Kamera-System aufgerufen wenn die Welt scrollt
+  /// Wird vom Kamera-System aufgerufen wenn die Welt scrollt.
+  /// Der Boden bewegt sich nach unten (scrollt aus dem Bild wenn Rakete hoch genug).
   void scroll(double delta) {
     _groundOffsetY += delta;
   }
 
-  /// Setzt den Kamera- und Atmosphären-Zustand zurück
+  /// Setzt den Kamera- und Atmosphären-Zustand zurück (neues Spiel)
   void resetCamera() {
     _groundOffsetY = 0.0;
+    // Atmosphäre auf Zone 1 (Troposphäre) zurücksetzen
     _altitudeM = 0.0;
     _currentZone = AtmosphereZones.zone1Ground;
     _zoneLabelOpacity = 0.0;
@@ -97,6 +95,7 @@ class BackgroundComponent extends PositionComponent {
     if (_zoneLabelTimer > 0) {
       _zoneLabelTimer -= dt;
       if (_zoneLabelTimer <= 1.0) {
+        // In letzter Sekunde ausblenden
         _zoneLabelOpacity = _zoneLabelTimer.clamp(0.0, 1.0);
       }
     }
@@ -117,9 +116,10 @@ class BackgroundComponent extends PositionComponent {
     }
   }
 
-  /// Himmelgradient passend zur aktuellen Zone
+  /// Himmelgradient passend zur aktuellen Zone -- deckt die gesamte Bildschirmfläche ab
   void _renderSky(Canvas canvas) {
     final List<Color> colors = AtmosphereZones.interpolatedColors(_altitudeM);
+    // Volle Bildschirmhöhe -- kein schwarzer Streifen am unteren Rand
     final Rect skyRect = Rect.fromLTWH(0, 0, size.x, size.y);
 
     final Paint skyPaint = Paint()
@@ -132,11 +132,12 @@ class BackgroundComponent extends PositionComponent {
     canvas.drawRect(skyRect, skyPaint);
   }
 
-  /// Sterne mit Kenney `star.png` rendern
+  /// Sterne - Dichte abhängig von Zone
   void _renderStars(Canvas canvas) {
     final double density = AtmosphereZones.forAltitude(_altitudeM).starDensity;
     if (density <= 0) return;
 
+    // Wie viele Sterne sollen sichtbar sein
     final int visibleCount = (_stars.length * density).round();
 
     for (int i = 0; i < visibleCount && i < _stars.length; i++) {
@@ -145,48 +146,46 @@ class BackgroundComponent extends PositionComponent {
           (sin(star.twinklePhase + star.twinkleOffset) * 0.3 + 0.7);
       final double alpha = (star.brightness * twinkle * density).clamp(0.0, 1.0);
 
-      // Stern-Sprite rendern mit Opazität
-      final double starSize = star.radius * 3.5; // Sprite etwas größer als Kreis
-      _starSprite?.render(
-        canvas,
-        position: Vector2(star.x - starSize / 2, star.y - starSize / 2),
-        size: Vector2.all(starSize),
-        overridePaint: Paint()..color = Colors.white.withAlpha((alpha * 255).round()),
-      );
+      final Paint starPaint = Paint()
+        ..color = Colors.white.withValues(alpha: alpha);
+      canvas.drawCircle(Offset(star.x, star.y), star.radius, starPaint);
     }
   }
 
-  /// Boden mit Startrampe
+  /// Boden mit Startrampe (scrollt mit der Kamera nach unten)
   void _renderGround(Canvas canvas) {
-    final double groundY =
-        size.y - GameConstants.kGroundHeight + _groundOffsetY;
+    final double groundY = size.y - GameConstants.kGroundHeight + _groundOffsetY;
 
+    // Boden ist ausserhalb des Bildschirms -- nicht rendern
     if (groundY >= size.y) return;
 
+    // Bodenfläche
     canvas.drawRect(
       Rect.fromLTWH(0, groundY, size.x, GameConstants.kGroundHeight),
       _groundPaint,
     );
 
+    // Trennlinie
     canvas.drawLine(
       Offset(0, groundY),
       Offset(size.x, groundY),
       _groundLinePaint,
     );
 
+    // Startrampe (nur sichtbar wenn Boden auf Screen)
     final double cx = size.x / 2;
     canvas.drawRect(Rect.fromLTWH(cx - 40, groundY - 8, 80, 8), _padPaint);
     canvas.drawCircle(Offset(cx - 35, groundY - 10), 4, _padLightPaint);
     canvas.drawCircle(Offset(cx + 35, groundY - 10), 4, _padLightPaint);
   }
 
-  /// Zonen-Einblend-Label
+  /// Zonen-Einblend-Label (z.B. "STRATOSPHÄRE")
   void _renderZoneLabel(Canvas canvas) {
     final TextPainter tp = TextPainter(
       text: TextSpan(
         text: _zoneLabelText,
         style: TextStyle(
-          color: Colors.white.withAlpha((_zoneLabelOpacity * 0.85 * 255).round()),
+          color: Colors.white.withValues(alpha: _zoneLabelOpacity * 0.85),
           fontSize: 22,
           fontWeight: FontWeight.bold,
           letterSpacing: 6,
