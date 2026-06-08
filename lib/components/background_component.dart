@@ -5,8 +5,7 @@ import 'package:rocket_app/game/atmosphere_zone.dart';
 import 'package:rocket_app/game/game_constants.dart';
 
 /// Dynamischer Hintergrund mit Zonen-basiertem Atmosphären-System.
-/// Sterne werden jetzt mit Kenney `star.png` gerendert.
-/// Meteore erscheinen als dekorative `meteor_*.png` Sprites.
+/// Sterne werden mit `star.png` gerendert.
 class BackgroundComponent extends PositionComponent {
   // --- Sterne ---
   final List<_Star> _stars = [];
@@ -33,16 +32,8 @@ class BackgroundComponent extends PositionComponent {
   double _zoneLabelTimer = 0.0;
   static const double kLabelDuration = 3.0;
 
-  // --- Sprite-Assets (Kenney CC0) ---
+  // --- Sprite-Assets ---
   Sprite? _starSprite;
-  Sprite? _meteorSprite1;
-  Sprite? _meteorSprite2;
-
-  // --- Meteore ---
-  final List<MeteorComponent> _meteors = [];
-  double _meteorSpawnTimer = 0.0;
-  static const double kMeteorInterval = 5.0;
-  static const double kMeteorMinAltitudeM = 500.0; // Erst ab Zone 2
 
   BackgroundComponent({required Vector2 screenSize})
       : super(size: screenSize, position: Vector2.zero());
@@ -51,10 +42,8 @@ class BackgroundComponent extends PositionComponent {
   Future<void> onLoad() async {
     await super.onLoad();
     _generateStars();
-    // Kenney-Sprites laden
+    // Stern-Sprite laden
     _starSprite = await Sprite.load('star.png');
-    _meteorSprite1 = await Sprite.load('meteor_1.png');
-    _meteorSprite2 = await Sprite.load('meteor_2.png');
   }
 
   void _generateStars() {
@@ -98,12 +87,6 @@ class BackgroundComponent extends PositionComponent {
     _zoneLabelOpacity = 0.0;
     _zoneLabelTimer = 0.0;
     _zoneLabelText = '';
-    _meteorSpawnTimer = 0.0;
-    // Meteore entfernen
-    for (final m in _meteors.toList()) {
-      m.removeFromParent();
-    }
-    _meteors.clear();
   }
 
   @override
@@ -122,36 +105,6 @@ class BackgroundComponent extends PositionComponent {
     for (final star in _stars) {
       star.twinklePhase += star.twinkleSpeed * dt;
     }
-
-    // Meteore spawnen in Zone 2+
-    if (_altitudeM >= kMeteorMinAltitudeM) {
-      _meteorSpawnTimer += dt;
-      if (_meteorSpawnTimer >= kMeteorInterval) {
-        _meteorSpawnTimer = 0;
-        _spawnMeteor();
-      }
-    }
-
-    // Meteore updaten und aufräumen
-    for (final m in _meteors.toList()) {
-      if (!m.isMounted) {
-        _meteors.remove(m);
-      }
-    }
-  }
-
-  void _spawnMeteor() {
-    final Sprite sprite =
-        _rnd.nextBool() ? _meteorSprite1! : _meteorSprite2!;
-    final meteor = MeteorComponent.random(
-      rnd: _rnd,
-      screenWidth: size.x,
-      screenHeight: size.y,
-      sprite: sprite,
-    );
-    _meteors.add(meteor);
-    // Meteore werden als Kinder des BackgroundComponent eingefügt
-    add(meteor);
   }
 
   @override
@@ -267,73 +220,4 @@ class _Star {
     required this.twinkleSpeed,
     required this.twinkleOffset,
   });
-}
-
-/// Dekorativer Meteor – gerendert mit Kenney `meteor_*.png`
-class MeteorComponent extends SpriteComponent {
-  final double _speedX;
-  final double _speedY;
-  final double _screenWidth;
-  final double _screenHeight;
-
-  MeteorComponent._({
-    required Vector2 position,
-    required Vector2 size,
-    required Sprite sprite,
-    required double speedX,
-    required double speedY,
-    required double screenWidth,
-    required double screenHeight,
-  })  : _speedX = speedX,
-        _speedY = speedY,
-        _screenWidth = screenWidth,
-        _screenHeight = screenHeight,
-        super(
-          position: position,
-          size: size,
-          sprite: sprite,
-          anchor: Anchor.center,
-        );
-
-  /// Erzeugt einen zufälligen Meteor am oberen Bildschirmrand
-  factory MeteorComponent.random({
-    required Random rnd,
-    required double screenWidth,
-    required double screenHeight,
-    required Sprite sprite,
-  }) {
-    final double meteorSize = rnd.nextDouble() * 20 + 15;
-    final double x = rnd.nextDouble() * screenWidth;
-    final double y = -meteorSize; // Oberhalb des Bildschirms starten
-
-    // Diagonal nach unten fliegen
-    final double angle = (rnd.nextDouble() * 0.6 + 0.7) * pi; // ~120-150°
-    final double speed = rnd.nextDouble() * 80 + 50;
-    final double vx = cos(angle) * speed;
-    final double vy = sin(angle) * speed; // immer positiv = nach unten
-
-    return MeteorComponent._(
-      position: Vector2(x, y),
-      size: Vector2.all(meteorSize),
-      sprite: sprite,
-      speedX: vx,
-      speedY: vy,
-      screenWidth: screenWidth,
-      screenHeight: screenHeight,
-    );
-  }
-
-  @override
-  void update(double dt) {
-    super.update(dt);
-    position.x += _speedX * dt;
-    position.y += _speedY * dt;
-
-    // Außerhalb des Bildschirms → entfernen
-    if (position.y > _screenHeight + size.y ||
-        position.x < -size.x ||
-        position.x > _screenWidth + size.x) {
-      removeFromParent();
-    }
-  }
 }

@@ -8,7 +8,7 @@ import 'package:rocket_app/game/game_constants.dart';
 enum RocketState { idle, flying, crashed }
 
 /// Raketen-Komponente mit vollständiger Physik-Simulation.
-/// Rendering: Kenney `rocket.png` Sprite + `flame_*.png` für Schubflammen.
+/// Rendering: Eigenes `rocket.png` Sprite + `flame_*.png` für Schubflammen.
 class RocketComponent extends PositionComponent with CollisionCallbacks {
   // --- Physikalische Zustandsvariablen ---
 
@@ -53,15 +53,21 @@ class RocketComponent extends PositionComponent with CollisionCallbacks {
   /// Aktueller Zustand der Rakete
   RocketState state = RocketState.idle;
 
-  // --- Sprite-Assets (Kenney CC0) ---
+  // --- Sprite-Assets ---
 
-  /// Raketen-Sprite (rocket.png, 244×748 → skaliert auf Spielgröße)
+  /// Raketen-Sprite (rocket.png)
   Sprite? _rocketSprite;
 
-  /// Schubflammen-Sprites (flame_1/2/3.png, zyklisch animiert)
-  Sprite? _flameSprite;
+  /// Schubflammen-Sprites (flame_1/2/3.png, animiert)
+  final List<Sprite> _flameSprites = [];
 
-  /// Flicker-Timer für Flammen-Animation
+  /// Aktueller Flammen-Frame-Index
+  int _flameFrame = 0;
+
+  /// Flammen-Animations-Timer
+  double _flameAnimTimer = 0.0;
+
+  /// Flicker-Timer für Intensität
   double _flameTimer = 0.0;
 
   /// Aktueller Flicker-Wert (0.0–1.0)
@@ -72,6 +78,9 @@ class RocketComponent extends PositionComponent with CollisionCallbacks {
   /// Flammen-Skalierung relativ zur Raketengröße
   static const double kFlameWidthScale = 0.65;
   static const double kFlameHeightScale = 0.55;
+
+  /// Flammen-Animationsgeschwindigkeit (Frames pro Sekunde)
+  static const double kFlameAnimSpeed = 8.0;
 
   RocketComponent({required Vector2 initialPosition})
       : super(
@@ -84,9 +93,11 @@ class RocketComponent extends PositionComponent with CollisionCallbacks {
   Future<void> onLoad() async {
     await super.onLoad();
 
-    // Kenney Sprite-Assets laden
+    // Raketen- und Flammen-Sprites laden
     _rocketSprite = await Sprite.load('rocket.png');
-    _flameSprite = await Sprite.load('flame_1.png');
+    _flameSprites.add(await Sprite.load('flame_1.png'));
+    _flameSprites.add(await Sprite.load('flame_2.png'));
+    _flameSprites.add(await Sprite.load('flame_3.png'));
 
     // Hitbox für Coin-Kollision (kleineres Rechteck = fairer Treffer)
     add(RectangleHitbox(
@@ -128,6 +139,14 @@ class RocketComponent extends PositionComponent with CollisionCallbacks {
   /// Flammenzittern-Animation aktualisieren
   void _updateFlicker(double dt) {
     _flameTimer += dt;
+    _flameAnimTimer += dt;
+
+    // Frame-Wechsel im Animations-Takt
+    if (_flameAnimTimer >= 1.0 / kFlameAnimSpeed && _flameSprites.isNotEmpty) {
+      _flameAnimTimer = 0.0;
+      _flameFrame = (_flameFrame + 1) % _flameSprites.length;
+    }
+
     // Mehrere Flicker-Wellen überlagert
     _flameFlicker = (sin(_flameTimer * 18) * 0.25 +
             sin(_flameTimer * 31) * 0.15 +
@@ -218,8 +237,10 @@ class RocketComponent extends PositionComponent with CollisionCallbacks {
     );
   }
 
-  /// Schubflamme als Kenney-Sprite rendern
+  /// Schubflamme als animiertes Sprite rendern
   void _renderFlame(Canvas canvas) {
+    if (_flameSprites.isEmpty) return;
+
     final double boostFactor = externalThrustMultiplier > 1.0 ? 1.5 : 1.0;
     final double flickerScale = 1.0 + _flameFlicker * 0.18;
 
@@ -229,7 +250,7 @@ class RocketComponent extends PositionComponent with CollisionCallbacks {
         size.y * kFlameHeightScale * flickerScale * boostFactor;
 
     // Flamme unterhalb der Rakete positionieren
-    _flameSprite?.render(
+    _flameSprites[_flameFrame].render(
       canvas,
       position: Vector2((size.x - flameW) / 2, size.y - flameH * 0.15),
       size: Vector2(flameW, flameH),
