@@ -280,8 +280,8 @@ class RocketGame extends FlameGame
   /// Coin-Wert basierend auf aktueller Hoehe
   int _altitudeCoinValue() {
     final double altM = _cameraWorldY / ScoreConstants.kPixelsPerMeter;
-    if (altM < 50) return 1;
-    if (altM < 200) return 2;
+    if (altM < ScoreConstants.kZone1MaxM) return 1;
+    if (altM < ScoreConstants.kZone2MaxM) return 2;
     return 3;
   }
 
@@ -483,8 +483,14 @@ class RocketGame extends FlameGame
       final double spawnY = -(sectionStart + rnd.nextDouble() * size.y);
       final double spawnX = size.x * 0.08 + rnd.nextDouble() * size.x * 0.84;
 
-      // Wert steigt mit Abstand: 1 = nah, 2 = mittel, 3 = weit
-      final int coinVal = section + 1;
+      // Wert basierend auf Meter-Höhe: Kamera-Offset + Pixel-Abstand über Bildschirm
+      final double spawnOffsetPx = sectionStart + rnd.nextDouble() * size.y;
+      final double totalAltM = (_cameraWorldY + spawnOffsetPx) / ScoreConstants.kPixelsPerMeter;
+      final int coinVal = totalAltM <= ScoreConstants.kZone1MaxM
+          ? 1
+          : totalAltM <= ScoreConstants.kZone2MaxM
+              ? 2
+              : 3;
 
       final coin = CoinComponent(
         position: Vector2(spawnX, spawnY),

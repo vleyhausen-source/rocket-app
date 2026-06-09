@@ -115,11 +115,12 @@ class CoinSpawner {
   final Random _random = Random();
 
   /// Erzeugt [count] Coins zufällig verteilt im Spielfeld
-  /// Höhere Coins haben mehr Wert
+  /// Wert basiert auf der übergebenen Basis-Höhe in Metern (Kamera-Offset)
   List<CoinSpawnData> generateCoins({
     required double screenWidth,
     required double screenHeight,
     required double groundHeight,
+    required double baseAltitudeM,
     int count = ScoreConstants.kCoinsPerRun,
   }) {
     final List<CoinSpawnData> result = [];
@@ -141,12 +142,14 @@ class CoinSpawner {
       final double x =
           screenWidth * 0.1 + _random.nextDouble() * screenWidth * 0.8;
 
-      // Wert abhängig von Höhe
-      final int coinValue = switch (heightFromGround) {
-        <= ScoreConstants.kZone1MaxPx => 1,
-        <= ScoreConstants.kZone2MaxPx => 2,
-        _ => 3,
-      };
+      // Wert abhängig von Gesamthöhe in Metern (Kamera + lokale Pixelhöhe)
+      final double totalAltM = baseAltitudeM +
+          (heightFromGround / ScoreConstants.kPixelsPerMeter);
+      final int coinValue = totalAltM <= ScoreConstants.kZone1MaxM
+          ? 1
+          : totalAltM <= ScoreConstants.kZone2MaxM
+              ? 2
+              : 3;
 
       result.add(CoinSpawnData(position: Vector2(x, y), value: coinValue));
     }

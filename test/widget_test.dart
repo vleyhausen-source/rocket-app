@@ -164,7 +164,7 @@ void main() {
     });
 
     test('Coin-Zonen-Grenzen sind aufsteigend', () {
-      expect(ScoreConstants.kZone1MaxPx, lessThan(ScoreConstants.kZone2MaxPx));
+      expect(ScoreConstants.kZone1MaxM, lessThan(ScoreConstants.kZone2MaxM));
     });
 
     test('Coin-Count pro Runde ist positiv', () {

@@ -153,13 +153,13 @@ class ScoreConstants {
   /// Basis-Coin-Wert (wird mit Höhenmultiplikator multipliziert)
   static const int kBaseCoinValue = 1;
 
-  /// Höhenzone 1: 0-200px -- normaler Coin-Wert
-  static const double kZone1MaxPx = 200.0;
+  /// Höhenzone Gold: 0-1000m
+  static const double kZone1MaxM = 1000.0;
 
-  /// Höhenzone 2: 200-500px -- doppelter Coin-Wert
-  static const double kZone2MaxPx = 500.0;
+  /// Höhenzone Blau: 1000-5000m
+  static const double kZone2MaxM = 5000.0;
 
-  /// Höhenzone 3: 500px+ -- dreifacher Coin-Wert
+  /// Höhenzone Lila: ab 5000m
   // Zone 3 hat keinen Max-Wert (alles darüber)
 
   /// Coins pro Runde (zufällig gespawnt)
