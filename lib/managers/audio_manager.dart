@@ -11,14 +11,6 @@ class AudioManager {
   bool _enabled = true;
   bool _initialized = false;
 
-  /// AudioPool für Coin-Sounds: mehrere Player-Instanzen vorgehalten
-  /// damit bei schnellem Einsammeln kein Startup-Delay entsteht.
-  /// Eigener AudioCache -- isoliert von FlameAudio.audioCache damit bgm.stop()
-  /// die Pool-Sources nicht invalidiert.
-  AudioPool? _coinPool;
-  AudioCache? _coinCache;
-  static const int _kCoinPoolSize = 4; // bis zu 4 gleichzeitige Coin-Sounds
-
   /// Dedizierter Player für den Schub-Loop (damit er gezielt gestoppt werden kann)
   AudioPlayer? _thrustPlayer;
   bool _thrustPlaying = false;
@@ -35,8 +27,6 @@ class AudioManager {
   static const double kSfxVolume = 0.7;
 
   /// Audio-Dateien die vorhanden sein müssen (assets/audio/)
-  /// Da wir keine echten Sounddateien haben, arbeiten wir mit einem
-  /// graceful-fallback: Fehler werden still ignoriert.
   static const List<String> kRequiredFiles = [
     'coin_collect.wav',
     'thrust_loop.ogg',
@@ -49,49 +39,14 @@ class AudioManager {
     if (_initialized) return;
     _initialized = true;
 
-    // Versuche Dateien vorzuladen -- Fehler werden ignoriert
     for (final file in kRequiredFiles) {
       try {
         await FlameAudio.audioCache.load(file);
       } catch (e) {
-        // Datei nicht vorhanden -- kein Problem, Audio wird deaktiviert
         _enabled = false;
+        // ignore: avoid_print
         print('Audio init error for $file: $e');
       }
-    }
-
-    await _initCoinPool();
-  }
-
-  /// Erstellt den Coin-AudioPool neu (isolierter Cache, lowLatency-Modus).
-  /// Wird beim ersten Start und nach jedem Neustart aufgerufen damit
-  /// der Pool-State sauber ist und keine disposed Player enthält.
-  Future<void> _initCoinPool() async {
-    if (!_enabled) return;
-
-    // Alten Pool sauber entsorgen bevor neu erstellt wird
-    try {
-      await _coinPool?.dispose();
-    } catch (_) {}
-    _coinPool = null;
-
-    try {
-      // Eigener Cache -- unabhängig von FlameAudio.audioCache.
-      // So schlägt bgm.stop() nie die Pool-Sources raus.
-      _coinCache = AudioCache(prefix: '');
-      await _coinCache!.load('assets/audio/coin_collect.wav');
-
-      _coinPool = await AudioPool.create(
-        source: AssetSource('audio/coin_collect.wav'),
-        audioCache: _coinCache,
-        maxPlayers: _kCoinPoolSize,
-        minPlayers: _kCoinPoolSize, // alle vorab laden
-        playerMode: PlayerMode.lowLatency, // minimal latency SFX-Modus
-      );
-    } catch (_) {
-      // Pool konnte nicht erstellt werden -- Fallback auf FlameAudio.play()
-      _coinPool = null;
-      _coinCache = null;
     }
   }
 
@@ -102,31 +57,40 @@ class AudioManager {
     if (soundFile == null || soundFile == _currentAmbient) return;
 
     try {
-      // Alten Sound ausblenden
       if (_currentAmbient != null) {
         await FlameAudio.bgm.stop();
       }
-
-      // Neuen Sound einblenden
       await FlameAudio.bgm.play(soundFile, volume: kAmbientVolume);
       _currentAmbient = soundFile;
     } catch (_) {
-      // Datei fehlt: Silent-Fallback
       _enabled = false;
     }
   }
 
-  /// Coin-Einsammel-Sound -- über AudioPool für minimale Latenz
-  Future<void> playCoinCollect() async {
+  /// Coin-Einsammel-Sound.
+  ///
+  /// Strategie: pro Play einen frischen AudioPlayer mit lowLatency +
+  /// ReleaseMode.release erstellen. Der Player disposed sich nach dem
+  /// Abspielen selbst -- kein Pool, kein Stau, kein Leak.
+  /// Die Datei ist im FlameAudio-Cache vorgeladen, also kein Disk-Read.
+  void playCoinCollect() {
     if (!_enabled) return;
+    // Fire-and-forget -- kein await, damit der Game-Loop nicht blockiert.
+    // Fehler werden still ignoriert.
+    _playCoinAsync();
+  }
+
+  Future<void> _playCoinAsync() async {
     try {
-      if (_coinPool != null) {
-        // Pool: sofortiger Play ohne Player-Setup-Delay
-        await _coinPool!.start(volume: kSfxVolume);
-      } else {
-        // Fallback falls Pool nicht initialisiert werden konnte
-        await FlameAudio.play('coin_collect.wav', volume: kSfxVolume);
-      }
+      final player = AudioPlayer();
+      // lowLatency: minimaler Android-MediaPlayer-Overhead für kurze SFX
+      await player.setPlayerMode(PlayerMode.lowLatency);
+      // release: Player disposed sich nach Playback-Ende automatisch
+      await player.setReleaseMode(ReleaseMode.release);
+      await player.play(
+        AssetSource('audio/coin_collect.wav'),
+        volume: kSfxVolume,
+      );
     } catch (_) {}
   }
 
@@ -146,8 +110,6 @@ class AudioManager {
 
       // Race Condition: Während loopLongAudio() lief, kam ein Stop-Request
       if (_thrustStopRequested) {
-        // Sound sofort wieder stoppen -- der Player wurde zwar gestartet,
-        // aber Stop wurde angefordert (z.B. Schub losgelassen / Absturz)
         try {
           await player.stop();
           await player.dispose();
@@ -162,7 +124,6 @@ class AudioManager {
       _thrustPlayer = player;
       _thrustPlaying = true;
     } catch (e) {
-      // Datei fehlt oder Playback-Fehler -- silent fallback
       _thrustPlaying = false;
     } finally {
       _thrustStarting = false;
@@ -203,7 +164,7 @@ class AudioManager {
     } catch (_) {}
   }
 
-  /// Alles stoppen und Pool für nächsten Lauf neu erstellen
+  /// Alles stoppen (beim Neustart)
   Future<void> stopAll() async {
     await stopThrustSound();
     if (!_enabled) return;
@@ -211,9 +172,6 @@ class AudioManager {
       await FlameAudio.bgm.stop();
       _currentAmbient = null;
     } catch (_) {}
-
-    // Pool neu erstellen damit keine veralteten Player in den nächsten Lauf gelangen
-    await _initCoinPool();
   }
 
   /// Audio ein/ausschalten
