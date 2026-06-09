@@ -11,22 +11,25 @@ class AudioManager {
   bool _enabled = true;
   bool _initialized = false;
 
-  /// Dedizierter Player für den Schub-Loop (damit er gezielt gestoppt werden kann)
+  // -------------------------------------------------------------------------
+  // Coin-SFX: 4 feste Player, einmal beim App-Start befüllt, nie disposed.
+  // Round-Robin-Zugriff -> kein GC-Druck, kein Platform-Channel-Overhead
+  // pro Coin. PlayerMode.lowLatency = Android SoundPool (quasi-synchron).
+  // -------------------------------------------------------------------------
+  static const int _kCoinPlayerCount = 4;
+  final List<AudioPlayer> _coinPlayers = [];
+  int _coinPlayerIndex = 0;
+  bool _coinPlayersReady = false;
+
+  /// Dedizierter Player für den Schub-Loop
   AudioPlayer? _thrustPlayer;
   bool _thrustPlaying = false;
-
-  /// Wird auf true gesetzt während loopLongAudio() noch nicht zurückgekehrt ist
-  /// (verhindert Race Condition: Stop vor Start-Abschluss)
   bool _thrustStarting = false;
-
-  /// Wird auf true gesetzt wenn stopThrustSound() während _thrustStarting läuft
   bool _thrustStopRequested = false;
 
-  /// Soundeffekt-Lautstärken
   static const double kAmbientVolume = 0.35;
   static const double kSfxVolume = 0.7;
 
-  /// Audio-Dateien die vorhanden sein müssen (assets/audio/)
   static const List<String> kRequiredFiles = [
     'coin_collect.wav',
     'thrust_loop.ogg',
@@ -34,7 +37,10 @@ class AudioManager {
     'upgrade.wav',
   ];
 
-  /// Initialisiert den Audio-Cache (lädt Dateien vor wenn vorhanden)
+  // -------------------------------------------------------------------------
+  // Initialisierung (einmalig)
+  // -------------------------------------------------------------------------
+
   Future<void> initialize() async {
     if (_initialized) return;
     _initialized = true;
@@ -48,18 +54,83 @@ class AudioManager {
         print('Audio init error for $file: $e');
       }
     }
+
+    await _initCoinPlayers();
   }
 
-  /// Spielt den passenden Ambient-Sound für die aktuelle Zone
+  /// Erstellt die 4 Coin-Player EINMALIG und lädt die Source in den SoundPool.
+  /// Diese Player leben für die gesamte App-Laufzeit.
+  Future<void> _initCoinPlayers() async {
+    if (!_enabled) return;
+
+    for (final p in _coinPlayers) {
+      try { await p.dispose(); } catch (_) {}
+    }
+    _coinPlayers.clear();
+    _coinPlayerIndex = 0;
+    _coinPlayersReady = false;
+
+    try {
+      for (int i = 0; i < _kCoinPlayerCount; i++) {
+        final p = AudioPlayer();
+        // lowLatency = Android SoundPool: einmaliges Laden,
+        // danach quasi-synchrones play() ohne Platform-Channel-Roundtrip
+        await p.setPlayerMode(PlayerMode.lowLatency);
+        // Source jetzt laden -> in SoundPool puffern
+        await p.setSource(AssetSource('audio/coin_collect.wav'));
+        // stop: Source im SoundPool behalten für Wiederverwertung
+        await p.setReleaseMode(ReleaseMode.stop);
+        _coinPlayers.add(p);
+      }
+      _coinPlayersReady = true;
+    } catch (_) {
+      // Fallback: kein SoundPool -> normaler FlameAudio.play()-Pfad
+      _coinPlayersReady = false;
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  // Coin-Sound (Hot-Path)
+  // -------------------------------------------------------------------------
+
+  /// Spielt den Coin-Sound ohne await -- Game-Loop blockiert nicht.
+  /// Round-Robin durch 4 vorgebohrte SoundPool-Player.
+  void playCoinCollect() {
+    if (!_enabled) return;
+
+    if (_coinPlayersReady && _coinPlayers.isNotEmpty) {
+      final player = _coinPlayers[_coinPlayerIndex];
+      _coinPlayerIndex = (_coinPlayerIndex + 1) % _coinPlayers.length;
+      // Async im Hintergrund -- wirft nie in den Game-Loop
+      _resumeCoin(player);
+    } else {
+      _playFallbackCoin();
+    }
+  }
+
+  Future<void> _resumeCoin(AudioPlayer player) async {
+    try {
+      await player.resume();
+    } catch (_) {}
+  }
+
+  Future<void> _playFallbackCoin() async {
+    try {
+      await FlameAudio.play('coin_collect.wav', volume: kSfxVolume);
+    } catch (_) {}
+  }
+
+  // -------------------------------------------------------------------------
+  // Ambient / Zone-Sound
+  // -------------------------------------------------------------------------
+
   Future<void> playZoneAmbient(AtmosphereZone zone) async {
     if (!_enabled) return;
     final String? soundFile = zone.ambientSound;
     if (soundFile == null || soundFile == _currentAmbient) return;
 
     try {
-      if (_currentAmbient != null) {
-        await FlameAudio.bgm.stop();
-      }
+      if (_currentAmbient != null) await FlameAudio.bgm.stop();
       await FlameAudio.bgm.play(soundFile, volume: kAmbientVolume);
       _currentAmbient = soundFile;
     } catch (_) {
@@ -67,37 +138,12 @@ class AudioManager {
     }
   }
 
-  /// Coin-Einsammel-Sound.
-  ///
-  /// Strategie: pro Play einen frischen AudioPlayer mit lowLatency +
-  /// ReleaseMode.release erstellen. Der Player disposed sich nach dem
-  /// Abspielen selbst -- kein Pool, kein Stau, kein Leak.
-  /// Die Datei ist im FlameAudio-Cache vorgeladen, also kein Disk-Read.
-  void playCoinCollect() {
-    if (!_enabled) return;
-    // Fire-and-forget -- kein await, damit der Game-Loop nicht blockiert.
-    // Fehler werden still ignoriert.
-    _playCoinAsync();
-  }
+  // -------------------------------------------------------------------------
+  // Schub-Sound (Loop)
+  // -------------------------------------------------------------------------
 
-  Future<void> _playCoinAsync() async {
-    try {
-      final player = AudioPlayer();
-      // lowLatency: minimaler Android-MediaPlayer-Overhead für kurze SFX
-      await player.setPlayerMode(PlayerMode.lowLatency);
-      // release: Player disposed sich nach Playback-Ende automatisch
-      await player.setReleaseMode(ReleaseMode.release);
-      await player.play(
-        AssetSource('audio/coin_collect.wav'),
-        volume: kSfxVolume,
-      );
-    } catch (_) {}
-  }
-
-  /// Schub-Sound starten (Loop) -- idempotent: kein Neustart wenn bereits läuft
   Future<void> startThrustSound() async {
     if (!_enabled) return;
-    // Bereits gestartet oder gerade am Starten -> nichts tun
     if (_thrustPlaying || _thrustStarting) return;
 
     _thrustStarting = true;
@@ -108,7 +154,6 @@ class AudioManager {
         volume: 0.4,
       );
 
-      // Race Condition: Während loopLongAudio() lief, kam ein Stop-Request
       if (_thrustStopRequested) {
         try {
           await player.stop();
@@ -123,19 +168,15 @@ class AudioManager {
 
       _thrustPlayer = player;
       _thrustPlaying = true;
-    } catch (e) {
+    } catch (_) {
       _thrustPlaying = false;
     } finally {
       _thrustStarting = false;
     }
   }
 
-  /// Schub-Sound stoppen -- nur den dedizierten Player, kein clearAll()
   Future<void> stopThrustSound() async {
-    // Wenn gerade am Starten: Stop-Wunsch vormerken -- wird nach Start sofort gestoppt
-    if (_thrustStarting) {
-      _thrustStopRequested = true;
-    }
+    if (_thrustStarting) _thrustStopRequested = true;
     if (!_thrustPlaying) return;
     try {
       await _thrustPlayer?.stop();
@@ -145,7 +186,10 @@ class AudioManager {
     _thrustPlaying = false;
   }
 
-  /// Absturz-Sound
+  // -------------------------------------------------------------------------
+  // Einzel-SFX
+  // -------------------------------------------------------------------------
+
   Future<void> playCrash() async {
     await stopThrustSound();
     if (!_enabled) return;
@@ -156,7 +200,6 @@ class AudioManager {
     } catch (_) {}
   }
 
-  /// Upgrade-Kauf-Sound
   Future<void> playUpgrade() async {
     if (!_enabled) return;
     try {
@@ -164,7 +207,12 @@ class AudioManager {
     } catch (_) {}
   }
 
-  /// Alles stoppen (beim Neustart)
+  // -------------------------------------------------------------------------
+  // Neustart / Mute
+  // -------------------------------------------------------------------------
+
+  /// Stoppt BGM und Schub. Coin-Player werden NICHT angefasst --
+  /// sie leben für die gesamte App-Laufzeit im SoundPool.
   Future<void> stopAll() async {
     await stopThrustSound();
     if (!_enabled) return;
@@ -174,7 +222,6 @@ class AudioManager {
     } catch (_) {}
   }
 
-  /// Audio ein/ausschalten
   void setEnabled(bool enabled) {
     _enabled = enabled;
     if (!enabled) {
