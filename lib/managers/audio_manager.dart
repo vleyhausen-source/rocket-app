@@ -77,8 +77,12 @@ class AudioManager {
 
   /// Schub-Sound starten (Loop) -- idempotent: kein Neustart wenn bereits läuft
   Future<void> startThrustSound() async {
-    if (!_enabled || _thrustPlaying) return;
+    if (!_enabled) return;
     try {
+      if (_thrustPlaying) {
+        // Sound läuft bereits, nichts zu tun
+        return;
+      }
       _thrustPlayer = await FlameAudio.loopLongAudio(
         'thrust_loop.ogg',
         volume: 0.4,
@@ -86,6 +90,7 @@ class AudioManager {
       _thrustPlaying = true;
     } catch (_) {
       // Datei fehlt oder Playback-Fehler -- still ignorieren
+      // Wichtig: _thrustPlaying bleibt false, damit bei nächstem Versuch ein neuer Versuch unternommen wird
     }
   }
 
