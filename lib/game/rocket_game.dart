@@ -147,6 +147,9 @@ class RocketGame extends FlameGame
     _checkCollisions(safeDt);
     _checkNewCoinRow();
     _updateCoinMagnet(safeDt);
+    
+    // Schub-Sound aktualisieren
+    _updateThrustSound();
 
     // UI-Rebuild gedrosselt auf 30/s
     _uiUpdateTimer += safeDt;
@@ -171,6 +174,11 @@ class RocketGame extends FlameGame
       // Autopilot: Rakete hält sich automatisch gerade
       _rocket.lateralInput = -_rocket.tiltDegrees / 45.0 * 0.5;
       _rocket.thrustActive = true;
+    }
+    
+    // Prüfen, ob Treibstoff leer ist und Schub stoppen wenn nötig
+    if (_rocket.thrustActive && _rocket.fuel <= 0) {
+      _rocket.thrustActive = false;
     }
   }
 
@@ -594,6 +602,17 @@ class RocketGame extends FlameGame
     _rocket.lateralInput =
         ((totalX / _activeTouches.length - screenMid) / screenMid)
             .clamp(-1.0, 1.0);
+  }
+
+  /// Aktualisiert den Schub-Sound basierend auf dem aktuellen Zustand
+  void _updateThrustSound() {
+    if (_rocket.thrustActive && _rocket.fuel > 0) {
+      // Schub ist aktiv und Treibstoff vorhanden - Sound starten wenn nicht bereits läuft
+      _audioManager.startThrustSound();
+    } else {
+      // Schub ist nicht aktiv oder Treibstoff leer - Sound stoppen
+      _audioManager.stopThrustSound();
+    }
   }
 
   @override
