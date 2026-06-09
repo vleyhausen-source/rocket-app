@@ -13,6 +13,8 @@ import 'package:rocket_app/game/atmosphere_zone.dart';
 import 'package:rocket_app/managers/audio_manager.dart';
 import 'package:rocket_app/managers/score_manager.dart';
 import 'package:rocket_app/managers/upgrade_manager.dart';
+import 'package:rocket_app/managers/milestone_manager.dart';
+import 'package:rocket_app/components/powerup_component.dart';
 
 /// Spielzustand-Enum für den gesamten Game-Loop
 enum GamePhase { menu, ready, playing, crashed, paused }
@@ -30,6 +32,24 @@ class RocketGame extends FlameGame
   final ScoreManager _scoreManager = ScoreManager.instance;
   final AudioManager _audioManager = AudioManager.instance;
   final UpgradeManager _upgMgr = UpgradeManager.instance;
+  final MilestoneManager _milestoneMgr = MilestoneManager.instance;
+
+  // --- Powerup-Tracking ---
+  final List<PowerupComponent> _activePowerups = [];
+  final PowerupSpawner _powerupSpawner = PowerupSpawner();
+
+  // --- Powerup-Laufzeit-Zustand ---
+  double _magnetTimer = 0.0;      // Sekunden verbleibend
+  int    _flightShields = 0;      // Schilde aus Powerups (max 3)
+  double _flightShieldCooldown = 0.0;
+  static const double _kMagnetDuration    = 10.0;
+  static const double _kMagnetRadiusFlight = 200.0;
+  static const double _kFuelRefillFraction = 0.30; // 30% des aktuellen Tanks
+  static const int    _kFlightShieldMax    = 3;
+
+  // --- Meilenstein-Callback für UI ---
+  void Function(MilestoneDefinition)? onMilestone;
+  bool _isNewHighscoreDuringFlight = false;
 
   // --- Zustand ---
   GamePhase phase = GamePhase.menu;
@@ -81,6 +101,10 @@ class RocketGame extends FlameGame
   bool get isMenu => phase == GamePhase.menu;
   bool get isReady => phase == GamePhase.ready;
   bool get audioEnabled => _audioManager.isEnabled;
+  double get magnetTimeLeft => _magnetTimer;
+  bool   get magnetActive    => _magnetTimer > 0;
+  int    get flightShields   => _flightShields;
+  bool   get isNewHighscoreDuringFlight => _isNewHighscoreDuringFlight;
 
   // Spezial-Upgrade-Getter für HUD
   bool get boosterAvailable =>
@@ -117,6 +141,16 @@ class RocketGame extends FlameGame
 
     _rocket = RocketComponent(initialPosition: _rocketStartPosition());
     await add(_rocket);
+
+    // Meilenstein-Callback: Coins gutschreiben und UI benachrichtigen
+    _milestoneMgr.onMilestoneReached = (m) {
+      if (m.coinBonus > 0) {
+        _scoreManager.totalCoins += m.coinBonus;
+        _scoreManager.save();
+      }
+      onMilestone?.call(m);
+      onStateChange?.call();
+    };
   }
 
   Vector2 _rocketStartPosition() {
@@ -146,7 +180,11 @@ class RocketGame extends FlameGame
     _updateScoring(safeDt);
     _checkCollisions(safeDt);
     _checkNewCoinRow();
+    _checkPowerupSpawn();
     _updateCoinMagnet(safeDt);
+    _updatePowerups(safeDt);
+    _checkPowerupCollisions();
+    _updateMilestones();
     
     // Schub-Sound aktualisieren
     _updateThrustSound();
@@ -237,6 +275,9 @@ class RocketGame extends FlameGame
         child.position.y += delta;
       }
     }
+
+    // Powerups mitscrollen
+    _scrollPowerups(delta);
   }
 
   /// Spawnt neue Coins wenn der Spieler neue Hoehenbereiche erreicht.
@@ -319,11 +360,115 @@ class RocketGame extends FlameGame
   }
 
   // =========================================================================
-  // COIN-MAGNET
+  // MEILENSTEINE
   // =========================================================================
 
+  void _updateMilestones() {
+    final double altM = _scoreManager.maxAltitudePx / ScoreConstants.kPixelsPerMeter;
+    _milestoneMgr.update(altM);
+
+    // Neuer Highscore während des Flugs
+    final bool newHS = _scoreManager.currentScore > _scoreManager.highscore &&
+        _scoreManager.currentScore > 0;
+    if (newHS && !_isNewHighscoreDuringFlight) {
+      _isNewHighscoreDuringFlight = true;
+      onStateChange?.call();
+    }
+  }
+
+  // =========================================================================
+  // POWERUP-SPAWN
+  // =========================================================================
+
+  void _checkPowerupSpawn() {
+    final double altM = _cameraWorldY / ScoreConstants.kPixelsPerMeter;
+    final List<PowerupSpawnData> spawns = _powerupSpawner.check(altM, size.x);
+    for (final s in spawns) {
+      final p = PowerupComponent(
+        position: s.position,
+        type: s.type,
+        onCollected: _onPowerupCollected,
+      );
+      _activePowerups.add(p);
+      add(p);
+    }
+  }
+
+  // =========================================================================
+  // POWERUP-UPDATE (Timer, Scroll-Cleanup)
+  // =========================================================================
+
+  void _updatePowerups(double dt) {
+    // Magnet-Timer ticken
+    if (_magnetTimer > 0) {
+      _magnetTimer = (_magnetTimer - dt).clamp(0.0, _kMagnetDuration);
+    }
+    // Flight-Shield-Cooldown
+    if (_flightShieldCooldown > 0) _flightShieldCooldown -= dt;
+
+    // Powerups mit Kamera mitscrollen + Off-Screen-Cleanup
+    for (final p in List<PowerupComponent>.from(_activePowerups)) {
+      if (p.position.y > size.y + 60) {
+        p.removeFromParent();
+        _activePowerups.remove(p);
+      }
+    }
+  }
+
+  // Powerups beim Kamerascrollen mitbewegen (wird in _scrollWorldObjects aufgerufen)
+  void _scrollPowerups(double delta) {
+    for (final p in _activePowerups) {
+      p.position.y += delta;
+    }
+  }
+
+  // =========================================================================
+  // POWERUP-KOLLISION
+  // =========================================================================
+
+  void _checkPowerupCollisions() {
+    final double rx = _rocket.position.x;
+    final double ry = _rocket.position.y - _rocket.size.y / 2;
+    const double collectRadius = PowerupComponent.kRadius + 22.0;
+
+    for (final p in List<PowerupComponent>.from(_activePowerups)) {
+      final double dx = p.position.x - rx;
+      final double dy = p.position.y - ry;
+      if (dx * dx + dy * dy <= collectRadius * collectRadius) {
+        p.collect();
+        _activePowerups.remove(p);
+      }
+    }
+  }
+
+  void _onPowerupCollected(PowerupType type) {
+    switch (type) {
+      case PowerupType.fuel:
+        // 30% des max Tanks auffüllen
+        final double refill = _upgMgr.maxFuel * _kFuelRefillFraction;
+        _rocket.fuel = (_rocket.fuel + refill).clamp(0.0, _upgMgr.maxFuel * 1.5);
+
+      case PowerupType.magnet:
+        _magnetTimer = _kMagnetDuration;
+
+      case PowerupType.shield:
+        _flightShields = (_flightShields + 1).clamp(0, _kFlightShieldMax);
+    }
+    onMilestone?.call(MilestoneDefinition(
+      altitudeM: 0,
+      coinBonus: 0,
+      label: type.label,
+    ));
+    onStateChange?.call();
+  }
+
+
+
   void _updateCoinMagnet(double dt) {
-    final double radius = _upgMgr.magnetRadius;
+    // Kombinierter Radius: Upgrade-Magnet ODER Flight-Powerup-Magnet (größerer gewinnt)
+    final double upgradeRadius = _upgMgr.magnetRadius;
+    final double flightRadius = _magnetTimer > 0 ? _kMagnetRadiusFlight : 0.0;
+    final double radius = upgradeRadius > flightRadius ? upgradeRadius : flightRadius;
     if (radius <= 0) return;
 
     // Raketen-Mittelpunkt
@@ -391,6 +536,21 @@ class RocketGame extends FlameGame
   void _handlePotentialCrash() {
     // Cooldown verhindert multi-frame Shield-Drain
     if (_shieldCooldown > 0) return;
+
+    // Flight-Schild (Powerup) zuerst prüfen
+    if (_flightShieldCooldown <= 0 && _flightShields > 0) {
+      _flightShields--;
+      _flightShieldCooldown = _kShieldCooldownDuration;
+      _rocket.velocity.y = -300;
+      _rocket.velocity.x = -_rocket.velocity.x * 0.6;
+      _rocket.position.x =
+          _rocket.position.x.clamp(_rocket.size.x, size.x - _rocket.size.x);
+      _rocket.position.y =
+          (size.y - ScoreConstants.kCoinMinHeightPx - 80).clamp(50, size.y - 150);
+      onStateChange?.call();
+      return;
+    }
+
     final bool shieldAbsorbed = _upgMgr.absorbCrash();
     if (shieldAbsorbed) {
       _shieldCooldown = _kShieldCooldownDuration;
@@ -536,8 +696,20 @@ class RocketGame extends FlameGame
   Future<void> startGame() async {
     _scoreManager.startRun();
     _upgMgr.initRun();
+    _milestoneMgr.startRun();
     _activeTouches.clear();
     _lastZone = AtmosphereZones.zone1Ground;
+
+    // Powerups und Laufzeit-Zustand zurücksetzen
+    for (final p in List<PowerupComponent>.from(_activePowerups)) {
+      p.removeFromParent();
+    }
+    _activePowerups.clear();
+    _powerupSpawner.reset();
+    _magnetTimer = 0.0;
+    _flightShields = 0;
+    _flightShieldCooldown = 0.0;
+    _isNewHighscoreDuringFlight = false;
 
     // Kamera zurücksetzen
     _cameraWorldY = 0.0;

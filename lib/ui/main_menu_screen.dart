@@ -1,9 +1,11 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:rocket_app/managers/score_manager.dart';
+import 'package:rocket_app/managers/streak_manager.dart';
 import 'package:rocket_app/managers/upgrade_manager.dart';
 import 'package:rocket_app/ui/game_screen.dart';
 import 'package:rocket_app/ui/shop_screen.dart';
+import 'package:rocket_app/ui/streak_dialog.dart';
 import 'package:rocket_app/ui/theme.dart';
 import 'package:rocket_app/ui/transitions.dart';
 
@@ -26,6 +28,7 @@ class _MainMenuScreenState extends State<MainMenuScreen>
   late Animation<double> _pulse;
 
   final ScoreManager _scoreMgr = ScoreManager.instance;
+  int _streakDay = 0;
 
   @override
   void initState() {
@@ -70,7 +73,13 @@ class _MainMenuScreenState extends State<MainMenuScreen>
   Future<void> _loadData() async {
     await _scoreMgr.load();
     await UpgradeManager.instance.load();
-    if (mounted) setState(() {});
+    final streak = await StreakManager.instance.checkAndUpdate();
+    if (streak.isNew) {
+      // Streak-Coins gutschreiben (Hauptmenü-Weg: wenn kein GameScreen offen ist)
+      _scoreMgr.totalCoins += streak.coinBonus;
+      await _scoreMgr.save();
+    }
+    if (mounted) setState(() { _streakDay = StreakManager.instance.streakDay; });
   }
 
   @override
@@ -141,6 +150,12 @@ class _MainMenuScreenState extends State<MainMenuScreen>
                   delay: const Duration(milliseconds: 800),
                   child: _StatsSection(scoreMgr: _scoreMgr),
                 ),
+
+                // Streak-Badge
+                if (_streakDay > 0) ...[
+                  const SizedBox(height: 10),
+                  StreakBadge(streakDay: _streakDay),
+                ],
 
                 const Spacer(flex: 1),
 

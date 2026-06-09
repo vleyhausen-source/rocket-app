@@ -1,8 +1,13 @@
 import 'package:flame/game.dart';
 import 'package:flutter/material.dart';
 import 'package:rocket_app/game/rocket_game.dart';
+import 'package:rocket_app/managers/milestone_manager.dart';
+import 'package:rocket_app/managers/score_manager.dart';
+import 'package:rocket_app/managers/streak_manager.dart';
 import 'package:rocket_app/ui/hud_widget.dart';
+import 'package:rocket_app/ui/milestone_banner.dart';
 import 'package:rocket_app/ui/shop_screen.dart';
+import 'package:rocket_app/ui/streak_dialog.dart';
 import 'package:rocket_app/ui/transitions.dart';
 
 /// Hauptspielbildschirm mit Shop-Navigation
@@ -16,16 +21,55 @@ class GameScreen extends StatefulWidget {
 class _GameScreenState extends State<GameScreen> {
   late final RocketGame _game;
 
+  // Meilenstein-Queue: Banner werden nacheinander angezeigt
+  final List<MilestoneDefinition> _pendingBanners = [];
+  MilestoneDefinition? _activeBanner;
+
   @override
   void initState() {
     super.initState();
     _game = RocketGame();
     _game.onStateChange = _refresh;
     _game.onCrash = _refresh;
+    _game.onMilestone = _onMilestone;
+
+    // Streak nach erstem Frame prüfen (Context nötig für Dialog)
+    WidgetsBinding.instance.addPostFrameCallback((_) => _checkStreak());
   }
 
   void _refresh() {
     if (mounted) setState(() {});
+  }
+
+  void _onMilestone(MilestoneDefinition m) {
+    if (!mounted) return;
+    setState(() {
+      _pendingBanners.add(m);
+      if (_activeBanner == null) _showNextBanner();
+    });
+  }
+
+  void _showNextBanner() {
+    if (_pendingBanners.isEmpty) {
+      _activeBanner = null;
+      return;
+    }
+    _activeBanner = _pendingBanners.removeAt(0);
+  }
+
+  Future<void> _checkStreak() async {
+    final info = await StreakManager.instance.checkAndUpdate();
+    if (!mounted) return;
+    await LoginBonusDialog.showIfNew(
+      context,
+      info,
+      onClaim: () {
+        // Streak-Coins gutschreiben
+        ScoreManager.instance.totalCoins += info.coinBonus;
+        ScoreManager.instance.save();
+        if (mounted) setState(() {});
+      },
+    );
   }
 
   Future<void> _openShop() async {
@@ -76,6 +120,20 @@ class _GameScreenState extends State<GameScreen> {
                 onShop: _openShop,
               ),
             ),
+
+          // Meilenstein-Banner (Schlange)
+          if (_activeBanner != null)
+            MilestoneBanner(
+              key: ValueKey(_activeBanner!.label + DateTime.now().millisecondsSinceEpoch.toString()),
+              milestone: _activeBanner!,
+              onDone: () {
+                if (mounted) setState(() => _showNextBanner());
+              },
+            ),
+
+          // Neuer-Rekord-Banner (nur während Flug)
+          if (_game.isPlaying && _game.isNewHighscoreDuringFlight)
+            const NewRecordBanner(),
         ],
       ),
     );
@@ -98,7 +156,6 @@ class _ReadyOverlayState extends State<_ReadyOverlay>
   @override
   void initState() {
     super.initState();
-    // Pulsierender Blink-Effekt für den Hinweistext
     _controller = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 900),
@@ -115,13 +172,11 @@ class _ReadyOverlayState extends State<_ReadyOverlay>
   @override
   Widget build(BuildContext context) {
     return IgnorePointer(
-      // Touches sollen das Flame-Game erreichen, nicht dieses Widget
       child: Align(
         alignment: const Alignment(0, 0.55),
         child: FadeTransition(
           opacity: _pulseAnim,
           child: Padding(
-            // Sicherheits-Abstand links/rechts damit Banner nie überläuft
             padding: const EdgeInsets.symmetric(horizontal: 24),
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),

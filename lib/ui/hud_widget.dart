@@ -58,7 +58,12 @@ class HudWidget extends StatelessWidget {
                 ],
                 const SizedBox(height: 10),
                 _FuelBar(fuelPercent: game.fuelPercent),
-                // Schild-Anzeige
+                // Powerup-Schilde (Flight)
+                if (game.flightShields > 0) ...[
+                  const SizedBox(height: 8),
+                  _FlightShieldRow(count: game.flightShields),
+                ],
+                // Upgrade-Schilde
                 if (game.shieldsLeft > 0) ...[
                   const SizedBox(height: 8),
                   _ShieldRow(count: game.shieldsLeft),
@@ -67,6 +72,11 @@ class HudWidget extends StatelessWidget {
                 if (game.hullLivesLeft > 0) ...[
                   const SizedBox(height: 6),
                   _HullRow(count: game.hullLivesLeft),
+                ],
+                // Magnet-Timer Anzeige
+                if (game.magnetActive) ...[
+                  const SizedBox(height: 6),
+                  _MagnetTimer(secondsLeft: game.magnetTimeLeft),
                 ],
               ],
             ),
@@ -612,6 +622,60 @@ class _ScoreRow extends StatelessWidget {
             style: TextStyle(color: color, fontSize: 14,
                 fontWeight: FontWeight.bold)),
       ],
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Powerup-HUD-Widgets
+// ---------------------------------------------------------------------------
+
+/// Zeigt Flight-Shield-Icons (Powerup-Schilde, lila)
+class _FlightShieldRow extends StatelessWidget {
+  final int count;
+  const _FlightShieldRow({required this.count});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: List.generate(count, (_) => const Padding(
+        padding: EdgeInsets.only(right: 4),
+        child: Icon(Icons.shield, color: Color(0xFFCE93D8), size: 18),
+      )),
+    );
+  }
+}
+
+/// Zeigt Magnet-Countdown-Timer
+class _MagnetTimer extends StatelessWidget {
+  final double secondsLeft;
+  const _MagnetTimer({required this.secondsLeft});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: const Color(0xFF00E5FF).withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: const Color(0xFF00E5FF).withValues(alpha: 0.5)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.radar, color: Color(0xFF00E5FF), size: 14),
+          const SizedBox(width: 4),
+          Text(
+            '${secondsLeft.ceil()}s',
+            style: const TextStyle(
+              color: Color(0xFF00E5FF),
+              fontSize: 12,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
