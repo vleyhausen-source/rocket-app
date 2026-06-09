@@ -110,7 +110,12 @@ class AudioManager {
 
   Future<void> _resumeCoin(AudioPlayer player) async {
     try {
-      await player.resume();
+      // play() statt resume(): setzt Position garantiert auf 0 zurück.
+      // Source ist im SoundPool bereits geladen -- kein Disk-Read.
+      await player.play(
+        AssetSource('audio/coin_collect.wav'),
+        volume: kSfxVolume,
+      );
     } catch (_) {}
   }
 
