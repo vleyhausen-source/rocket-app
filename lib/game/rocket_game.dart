@@ -579,6 +579,8 @@ class RocketGame extends FlameGame
     if (_activeTouches.isEmpty) {
       _rocket.thrustActive = false;
       _rocket.lateralInput = 0.0;
+      // Schub-Sound stoppen wenn keine Berührung mehr aktiv ist
+      _audioManager.stopThrustSound();
       return;
     }
 

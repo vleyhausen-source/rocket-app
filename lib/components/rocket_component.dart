@@ -160,6 +160,9 @@ class RocketComponent extends PositionComponent with CollisionCallbacks {
       // Kraftstoffverbrauch (mit Effizienz-Upgrade)
       fuel -= GameConstants.kFuelBurnRate * fuelBurnMultiplier * dt;
       fuel = fuel.clamp(0.0, maxFuel);
+    } else if (thrustActive && fuel <= 0) {
+      // Treibstoff leer - Schub stoppen
+      thrustActive = false;
     }
 
     // --- Laterale Steuerung (mit Kontroll-Upgrade) ---
