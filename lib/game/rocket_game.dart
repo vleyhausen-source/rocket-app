@@ -616,8 +616,13 @@ class RocketGame extends FlameGame
     final bool shouldPlay = _rocket.thrustActive && _rocket.fuel > 0;
     
     if (shouldPlay) {
-      // Schub ist aktiv, Treibstoff vorhanden - Sound starten
-      _audioManager.startThrustSound();
+      try {
+        // Versuchen den Sound zu starten - idempotent durch AudioManager
+        _audioManager.startThrustSound();
+      } catch (e) {
+        // Fehler beim Starten des Sounds - sicherstellen, dass er gestoppt wird
+        _audioManager.stopThrustSound();
+      }
     } else {
       // Schub ist nicht aktiv oder Treibstoff leer - Sound stoppen
       _audioManager.stopThrustSound();
