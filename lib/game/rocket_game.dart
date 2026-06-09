@@ -608,7 +608,11 @@ class RocketGame extends FlameGame
   void _updateThrustSound() {
     // Sicherheitscheck: Wenn Spiel nicht im Spielzustand ist, Sound immer stoppen
     if (phase != GamePhase.playing) {
-      _audioManager.stopThrustSound();
+      try {
+        _audioManager.stopThrustSound();
+      } catch (e) {
+        // Fehler beim Stoppen des Sounds ignorieren - es soll einfach gestoppt werden
+      }
       return;
     }
     
@@ -621,11 +625,19 @@ class RocketGame extends FlameGame
         _audioManager.startThrustSound();
       } catch (e) {
         // Fehler beim Starten des Sounds - sicherstellen, dass er gestoppt wird
-        _audioManager.stopThrustSound();
+        try {
+          _audioManager.stopThrustSound();
+        } catch (e2) {
+          // Fehler beim Stoppen des Sounds ignorieren
+        }
       }
     } else {
       // Schub ist nicht aktiv oder Treibstoff leer - Sound stoppen
-      _audioManager.stopThrustSound();
+      try {
+        _audioManager.stopThrustSound();
+      } catch (e) {
+        // Fehler beim Stoppen des Sounds ignorieren
+      }
     }
   }
 
