@@ -11,6 +11,11 @@ class AudioManager {
   bool _enabled = true;
   bool _initialized = false;
 
+  /// AudioPool für Coin-Sounds: mehrere Player-Instanzen vorgehalten
+  /// damit bei schnellem Einsammeln kein Startup-Delay entsteht
+  AudioPool? _coinPool;
+  static const int _kCoinPoolSize = 4; // bis zu 4 gleichzeitige Coin-Sounds
+
   /// Dedizierter Player für den Schub-Loop (damit er gezielt gestoppt werden kann)
   AudioPlayer? _thrustPlayer;
   bool _thrustPlaying = false;
@@ -51,6 +56,19 @@ class AudioManager {
         print('Audio init error for $file: $e');
       }
     }
+
+    // AudioPool für Coin-Sound vorinitialisieren (latenzfreie Wiedergabe)
+    if (_enabled) {
+      try {
+        _coinPool = await AudioPool.createFromAsset(
+          path: 'audio/coin_collect.wav',
+          maxPlayers: _kCoinPoolSize,
+        );
+      } catch (_) {
+        // Pool konnte nicht erstellt werden -- Fallback auf FlameAudio.play()
+        _coinPool = null;
+      }
+    }
   }
 
   /// Spielt den passenden Ambient-Sound für die aktuelle Zone
@@ -74,11 +92,17 @@ class AudioManager {
     }
   }
 
-  /// Coin-Einsammel-Sound
+  /// Coin-Einsammel-Sound -- über AudioPool für minimale Latenz
   Future<void> playCoinCollect() async {
     if (!_enabled) return;
     try {
-      await FlameAudio.play('coin_collect.wav', volume: kSfxVolume);
+      if (_coinPool != null) {
+        // Pool: sofortiger Play ohne Player-Setup-Delay
+        await _coinPool!.start(volume: kSfxVolume);
+      } else {
+        // Fallback falls Pool nicht initialisiert werden konnte
+        await FlameAudio.play('coin_collect.wav', volume: kSfxVolume);
+      }
     } catch (_) {}
   }
 
