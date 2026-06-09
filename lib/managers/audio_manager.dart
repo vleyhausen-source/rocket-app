@@ -12,8 +12,11 @@ class AudioManager {
   bool _initialized = false;
 
   /// AudioPool für Coin-Sounds: mehrere Player-Instanzen vorgehalten
-  /// damit bei schnellem Einsammeln kein Startup-Delay entsteht
+  /// damit bei schnellem Einsammeln kein Startup-Delay entsteht.
+  /// Eigener AudioCache -- isoliert von FlameAudio.audioCache damit bgm.stop()
+  /// die Pool-Sources nicht invalidiert.
   AudioPool? _coinPool;
+  AudioCache? _coinCache;
   static const int _kCoinPoolSize = 4; // bis zu 4 gleichzeitige Coin-Sounds
 
   /// Dedizierter Player für den Schub-Loop (damit er gezielt gestoppt werden kann)
@@ -57,17 +60,38 @@ class AudioManager {
       }
     }
 
-    // AudioPool für Coin-Sound vorinitialisieren (latenzfreie Wiedergabe)
-    if (_enabled) {
-      try {
-        _coinPool = await AudioPool.createFromAsset(
-          path: 'audio/coin_collect.wav',
-          maxPlayers: _kCoinPoolSize,
-        );
-      } catch (_) {
-        // Pool konnte nicht erstellt werden -- Fallback auf FlameAudio.play()
-        _coinPool = null;
-      }
+    await _initCoinPool();
+  }
+
+  /// Erstellt den Coin-AudioPool neu (isolierter Cache, lowLatency-Modus).
+  /// Wird beim ersten Start und nach jedem Neustart aufgerufen damit
+  /// der Pool-State sauber ist und keine disposed Player enthält.
+  Future<void> _initCoinPool() async {
+    if (!_enabled) return;
+
+    // Alten Pool sauber entsorgen bevor neu erstellt wird
+    try {
+      await _coinPool?.dispose();
+    } catch (_) {}
+    _coinPool = null;
+
+    try {
+      // Eigener Cache -- unabhängig von FlameAudio.audioCache.
+      // So schlägt bgm.stop() nie die Pool-Sources raus.
+      _coinCache = AudioCache(prefix: '');
+      await _coinCache!.load('assets/audio/coin_collect.wav');
+
+      _coinPool = await AudioPool.create(
+        source: AssetSource('audio/coin_collect.wav'),
+        audioCache: _coinCache,
+        maxPlayers: _kCoinPoolSize,
+        minPlayers: _kCoinPoolSize, // alle vorab laden
+        playerMode: PlayerMode.lowLatency, // minimal latency SFX-Modus
+      );
+    } catch (_) {
+      // Pool konnte nicht erstellt werden -- Fallback auf FlameAudio.play()
+      _coinPool = null;
+      _coinCache = null;
     }
   }
 
@@ -179,7 +203,7 @@ class AudioManager {
     } catch (_) {}
   }
 
-  /// Alles stoppen (beim Neustart)
+  /// Alles stoppen und Pool für nächsten Lauf neu erstellen
   Future<void> stopAll() async {
     await stopThrustSound();
     if (!_enabled) return;
@@ -187,6 +211,9 @@ class AudioManager {
       await FlameAudio.bgm.stop();
       _currentAmbient = null;
     } catch (_) {}
+
+    // Pool neu erstellen damit keine veralteten Player in den nächsten Lauf gelangen
+    await _initCoinPool();
   }
 
   /// Audio ein/ausschalten
