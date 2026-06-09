@@ -24,7 +24,7 @@ class AudioManager {
   /// graceful-fallback: Fehler werden still ignoriert.
   static const List<String> kRequiredFiles = [
     'coin_collect.wav',
-    'thrust_loop.wav',
+    'thrust_loop.ogg',
     'explosion.wav',
     'upgrade.wav',
   ];
