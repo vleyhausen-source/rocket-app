@@ -110,8 +110,10 @@ class AudioManager {
 
   Future<void> _resumeCoin(AudioPlayer player) async {
     try {
-      // play() statt resume(): setzt Position garantiert auf 0 zurück.
-      // Source ist im SoundPool bereits geladen -- kein Disk-Read.
+      // stop() zuerst: setzt die interne streamId im SoundPoolPlayer auf null.
+      // Ohne stop() ruft Android beim nächsten play() soundPool.resume(streamId)
+      // auf einem bereits beendeten Stream auf -- der macht nichts, kein Sound.
+      await player.stop();
       await player.play(
         AssetSource('audio/coin_collect.wav'),
         volume: kSfxVolume,
