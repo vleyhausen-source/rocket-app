@@ -15,6 +15,13 @@ class AudioManager {
   AudioPlayer? _thrustPlayer;
   bool _thrustPlaying = false;
 
+  /// Wird auf true gesetzt während loopLongAudio() noch nicht zurückgekehrt ist
+  /// (verhindert Race Condition: Stop vor Start-Abschluss)
+  bool _thrustStarting = false;
+
+  /// Wird auf true gesetzt wenn stopThrustSound() während _thrustStarting läuft
+  bool _thrustStopRequested = false;
+
   /// Soundeffekt-Lautstärken
   static const double kAmbientVolume = 0.35;
   static const double kSfxVolume = 0.7;
@@ -78,25 +85,48 @@ class AudioManager {
   /// Schub-Sound starten (Loop) -- idempotent: kein Neustart wenn bereits läuft
   Future<void> startThrustSound() async {
     if (!_enabled) return;
+    // Bereits gestartet oder gerade am Starten -> nichts tun
+    if (_thrustPlaying || _thrustStarting) return;
+
+    _thrustStarting = true;
+    _thrustStopRequested = false;
     try {
-      if (_thrustPlaying) {
-        // Sound läuft bereits, nichts zu tun
-        return;
-      }
-      _thrustPlayer = await FlameAudio.loopLongAudio(
+      final AudioPlayer player = await FlameAudio.loopLongAudio(
         'thrust_loop.ogg',
         volume: 0.4,
       );
+
+      // Race Condition: Während loopLongAudio() lief, kam ein Stop-Request
+      if (_thrustStopRequested) {
+        // Sound sofort wieder stoppen -- der Player wurde zwar gestartet,
+        // aber Stop wurde angefordert (z.B. Schub losgelassen / Absturz)
+        try {
+          await player.stop();
+          await player.dispose();
+        } catch (_) {}
+        _thrustPlayer = null;
+        _thrustPlaying = false;
+        _thrustStarting = false;
+        _thrustStopRequested = false;
+        return;
+      }
+
+      _thrustPlayer = player;
       _thrustPlaying = true;
     } catch (e) {
-      // Datei fehlt oder Playback-Fehler -- Fehler wird ignoriert
-      // Wichtig: _thrustPlaying bleibt false, damit bei nächstem Versuch ein neuer Versuch unternommen wird
+      // Datei fehlt oder Playback-Fehler -- silent fallback
       _thrustPlaying = false;
+    } finally {
+      _thrustStarting = false;
     }
   }
 
   /// Schub-Sound stoppen -- nur den dedizierten Player, kein clearAll()
   Future<void> stopThrustSound() async {
+    // Wenn gerade am Starten: Stop-Wunsch vormerken -- wird nach Start sofort gestoppt
+    if (_thrustStarting) {
+      _thrustStopRequested = true;
+    }
     if (!_thrustPlaying) return;
     try {
       await _thrustPlayer?.stop();

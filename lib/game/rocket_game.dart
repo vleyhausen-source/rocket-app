@@ -179,6 +179,8 @@ class RocketGame extends FlameGame
     // Prüfen, ob Treibstoff leer ist und Schub stoppen wenn nötig
     if (_rocket.thrustActive && _rocket.fuel <= 0) {
       _rocket.thrustActive = false;
+      // Schub-Sound sofort stoppen wenn Treibstoff leer (nicht auf nächsten Frame warten)
+      _audioManager.stopThrustSound();
     }
   }
 
