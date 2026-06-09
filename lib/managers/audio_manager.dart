@@ -38,9 +38,10 @@ class AudioManager {
     for (final file in kRequiredFiles) {
       try {
         await FlameAudio.audioCache.load(file);
-      } catch (_) {
+      } catch (e) {
         // Datei nicht vorhanden -- kein Problem, Audio wird deaktiviert
         _enabled = false;
+        print('Audio init error for $file: $e');
       }
     }
   }
