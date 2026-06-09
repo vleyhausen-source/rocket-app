@@ -88,9 +88,10 @@ class AudioManager {
         volume: 0.4,
       );
       _thrustPlaying = true;
-    } catch (_) {
-      // Datei fehlt oder Playback-Fehler -- still ignorieren
+    } catch (e) {
+      // Datei fehlt oder Playback-Fehler -- Fehler wird ignoriert
       // Wichtig: _thrustPlaying bleibt false, damit bei nächstem Versuch ein neuer Versuch unternommen wird
+      _thrustPlaying = false;
     }
   }
 
