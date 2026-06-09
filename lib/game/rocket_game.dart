@@ -606,14 +606,20 @@ class RocketGame extends FlameGame
 
   /// Aktualisiert den Schub-Sound basierend auf dem aktuellen Zustand
   void _updateThrustSound() {
+    // Sicherheitscheck: Wenn Spiel nicht im Spielzustand ist, Sound immer stoppen
+    if (phase != GamePhase.playing) {
+      _audioManager.stopThrustSound();
+      return;
+    }
+    
     // Prüfen, ob der Sound gestartet werden soll (nur wenn Schub aktiv und Treibstoff da ist)
-    final bool shouldPlay = _rocket.thrustActive && _rocket.fuel > 0 && phase == GamePhase.playing;
+    final bool shouldPlay = _rocket.thrustActive && _rocket.fuel > 0;
     
     if (shouldPlay) {
-      // Schub ist aktiv, Treibstoff vorhanden und Spiel läuft - Sound starten
+      // Schub ist aktiv, Treibstoff vorhanden - Sound starten
       _audioManager.startThrustSound();
     } else {
-      // Schub ist nicht aktiv oder Treibstoff leer oder Spiel nicht im Spielzustand - Sound stoppen
+      // Schub ist nicht aktiv oder Treibstoff leer - Sound stoppen
       _audioManager.stopThrustSound();
     }
   }
