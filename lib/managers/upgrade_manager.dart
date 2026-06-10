@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:rocket_app/models/upgrade_model.dart';
+import 'package:rocket_app/managers/score_manager.dart';
 
 /// Verwaltet gekaufte Upgrades, berechnet Effekte und persistiert den Stand
 class UpgradeManager {
@@ -192,7 +193,14 @@ class UpgradeManager {
   void initRun() {
     boosterUsed = false;
     shieldUsed = false;
-    shieldsRemaining = shieldCount.round();
+    // Basis-Schilde aus Upgrade + ausstehende Bonus-Schilde aus Rewarded-Ads addieren
+    final int bonusShields = ScoreManager.instance.pendingShieldBonus;
+    shieldsRemaining = shieldCount.round() + bonusShields;
+    // Bonus-Schilde verbrauchen und persistieren
+    if (bonusShields > 0) {
+      ScoreManager.instance.pendingShieldBonus = 0;
+      ScoreManager.instance.save(); // fire-and-forget (async, keine await noetig hier)
+    }
     hullLivesRemaining = hullLives.round();  // Hüllenabpraller zurücksetzen
     boosterTimeRemaining = 0.0;
     autopilotActive = false;

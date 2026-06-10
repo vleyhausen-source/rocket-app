@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:rocket_app/ui/main_menu_screen.dart';
 import 'package:rocket_app/ui/theme.dart';
+import 'package:rocket_app/services/ad_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -17,6 +18,9 @@ void main() async {
   await SystemChrome.setEnabledSystemUIMode(
     SystemUiMode.immersiveSticky,
   );
+
+  // AdMob SDK fruehzeitig initialisieren (im Hintergrund)
+  AdService.instance.initialize().ignore();
 
   runApp(
     const ProviderScope(

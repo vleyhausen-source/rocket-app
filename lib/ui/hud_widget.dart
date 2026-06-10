@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:rocket_app/game/atmosphere_zone.dart';
 import 'package:rocket_app/game/rocket_game.dart';
 import 'package:rocket_app/managers/score_manager.dart';
+import 'package:rocket_app/services/ad_service.dart';
 
 // ==========================================================================
 // HUD (Head-Up Display)
@@ -462,7 +463,7 @@ class StartOverlayWidget extends StatelessWidget {
 // CRASH-OVERLAY
 // ==========================================================================
 
-class CrashOverlayWidget extends StatelessWidget {
+class CrashOverlayWidget extends StatefulWidget {
   final RocketGame game;
   final VoidCallback onRestart;
   final VoidCallback onShop;
@@ -475,8 +476,52 @@ class CrashOverlayWidget extends StatelessWidget {
   });
 
   @override
+  State<CrashOverlayWidget> createState() => _CrashOverlayWidgetState();
+}
+
+class _CrashOverlayWidgetState extends State<CrashOverlayWidget> {
+  // Verhindert doppeltes Tippen waehrend eine Ad laeuft
+  bool _adInProgress = false;
+
+  /// Rewarded-Ad fuer Coins: +100 Coins nach vollstaendiger Ad
+  Future<void> _watchAdForCoins() async {
+    if (_adInProgress) return;
+    setState(() => _adInProgress = true);
+
+    final result = await widget.game.showRewardedAd();
+    if (!mounted) return;
+
+    if (result == RewardedAdResult.rewarded) {
+      // Belohnung gutschreiben
+      ScoreManager.instance.totalCoins += 100;
+      await ScoreManager.instance.save();
+    }
+
+    if (mounted) setState(() => _adInProgress = false);
+  }
+
+  /// Rewarded-Ad fuer Schild: 1 Flugschild nach vollstaendiger Ad
+  Future<void> _watchAdForShield() async {
+    if (_adInProgress) return;
+    setState(() => _adInProgress = true);
+
+    final result = await widget.game.showRewardedAd();
+    if (!mounted) return;
+
+    if (result == RewardedAdResult.rewarded) {
+      // Bonus-Schild fuer naechsten Flug speichern.
+      // Wird in UpgradeManager.initRun() verbraucht und zu shieldsRemaining addiert.
+      ScoreManager.instance.pendingShieldBonus += 1;
+      await ScoreManager.instance.save();
+    }
+
+    if (mounted) setState(() => _adInProgress = false);
+  }
+
+  @override
   Widget build(BuildContext context) {
     final sm = ScoreManager.instance;
+    final bool adReady = widget.game.isRewardedAdReady && !_adInProgress;
 
     return Center(
       child: Container(
@@ -486,7 +531,7 @@ class CrashOverlayWidget extends StatelessWidget {
           color: Colors.black87,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: game.isNewHighscore ? Colors.amber : Colors.red.shade700,
+            color: widget.game.isNewHighscore ? Colors.amber : Colors.red.shade700,
             width: 2,
           ),
         ),
@@ -494,9 +539,9 @@ class CrashOverlayWidget extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
-              game.isNewHighscore ? '🏆 NEUER REKORD!' : '💥 ABSTURZ',
+              widget.game.isNewHighscore ? '🏆 NEUER REKORD!' : '💥 ABSTURZ',
               style: TextStyle(
-                color: game.isNewHighscore ? Colors.amber : Colors.red,
+                color: widget.game.isNewHighscore ? Colors.amber : Colors.red,
                 fontSize: 26, fontWeight: FontWeight.bold, letterSpacing: 3,
               ),
             ),
@@ -536,7 +581,7 @@ class CrashOverlayWidget extends StatelessWidget {
               children: [
                 const Text('Highscore',
                     style: TextStyle(color: Colors.white38, fontSize: 13)),
-                Text('${game.highscore}',
+                Text('${widget.game.highscore}',
                     style: const TextStyle(color: Colors.orangeAccent, fontSize: 14)),
               ],
             ),
@@ -550,17 +595,19 @@ class CrashOverlayWidget extends StatelessWidget {
                   Text('Gesamt Coins',
                       style: TextStyle(color: Colors.white38, fontSize: 13)),
                 ]),
-                Text('${game.totalCoins}',
+                Text('${widget.game.totalCoins}',
                     style: const TextStyle(color: Colors.yellowAccent,
                         fontSize: 14, fontWeight: FontWeight.bold)),
               ],
             ),
             const SizedBox(height: 20),
+
+            // --- Hauptbuttons: NOCHMAL + SHOP ---
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 ElevatedButton(
-                  onPressed: onRestart,
+                  onPressed: widget.onRestart,
                   style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.deepPurple,
                       foregroundColor: Colors.white,
@@ -571,7 +618,7 @@ class CrashOverlayWidget extends StatelessWidget {
                 ),
                 const SizedBox(width: 14),
                 ElevatedButton.icon(
-                  onPressed: onShop,
+                  onPressed: widget.onShop,
                   icon: const Icon(Icons.store, size: 18),
                   label: const Text('SHOP',
                       style: TextStyle(fontSize: 14, letterSpacing: 2)),
@@ -584,6 +631,60 @@ class CrashOverlayWidget extends StatelessWidget {
                 ),
               ],
             ),
+
+            // --- Rewarded-Ad-Buttons: nur anzeigen wenn Ad bereit ---
+            if (adReady) ...[
+              const SizedBox(height: 12),
+              const Divider(color: Colors.white12),
+              const SizedBox(height: 4),
+              const Text(
+                'BONUS (Werbung anschauen)',
+                style: TextStyle(
+                  color: Colors.white38,
+                  fontSize: 11,
+                  letterSpacing: 1.5,
+                ),
+              ),
+              const SizedBox(height: 10),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  // +100 Coins Button
+                  _AdRewardButton(
+                    label: '+100 Coins',
+                    icon: '🎬',
+                    onPressed: _adInProgress ? null : _watchAdForCoins,
+                  ),
+                  const SizedBox(width: 12),
+                  // +1 Schild Button
+                  _AdRewardButton(
+                    label: '+1 Schild',
+                    icon: '🎬',
+                    onPressed: _adInProgress ? null : _watchAdForShield,
+                  ),
+                ],
+              ),
+            ],
+
+            // Ladeindikator waehrend Ad laeuft
+            if (_adInProgress) ...[
+              const SizedBox(height: 14),
+              const Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  SizedBox(
+                    width: 16, height: 16,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Colors.white54,
+                    ),
+                  ),
+                  SizedBox(width: 8),
+                  Text('Werbung wird geladen...',
+                      style: TextStyle(color: Colors.white38, fontSize: 12)),
+                ],
+              ),
+            ],
           ],
         ),
       ),
@@ -672,6 +773,59 @@ class _MagnetTimer extends StatelessWidget {
               color: Color(0xFF00E5FF),
               fontSize: 12,
               fontWeight: FontWeight.bold,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Rewarded-Ad Button
+// ---------------------------------------------------------------------------
+
+/// Kleiner Button fuer Rewarded-Ad-Aktionen im Crash-Screen (Coins / Schild)
+class _AdRewardButton extends StatelessWidget {
+  final String label;
+  final String icon;
+  final VoidCallback? onPressed;
+
+  const _AdRewardButton({
+    required this.label,
+    required this.icon,
+    required this.onPressed,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return ElevatedButton(
+      onPressed: onPressed,
+      style: ElevatedButton.styleFrom(
+        backgroundColor: const Color(0xFF1B2540),
+        foregroundColor: Colors.white,
+        disabledBackgroundColor: const Color(0xFF111822),
+        disabledForegroundColor: Colors.white24,
+        side: BorderSide(
+          color: onPressed != null
+              ? const Color(0xFF4FC3F7)
+              : Colors.white12,
+          width: 1.2,
+        ),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(icon, style: const TextStyle(fontSize: 15)),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: const TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 0.5,
             ),
           ),
         ],

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math';
 
 import 'package:flame/events.dart';
@@ -15,6 +16,8 @@ import 'package:rocket_app/managers/score_manager.dart';
 import 'package:rocket_app/managers/upgrade_manager.dart';
 import 'package:rocket_app/managers/milestone_manager.dart';
 import 'package:rocket_app/components/powerup_component.dart';
+import 'package:rocket_app/services/ad_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 /// Spielzustand-Enum für den gesamten Game-Loop
 enum GamePhase { menu, ready, playing, crashed, paused }
@@ -33,6 +36,12 @@ class RocketGame extends FlameGame
   final AudioManager _audioManager = AudioManager.instance;
   final UpgradeManager _upgMgr = UpgradeManager.instance;
   final MilestoneManager _milestoneMgr = MilestoneManager.instance;
+  final AdService _adService = AdService.instance;
+
+  // --- Absturz-Zaehler: persistiert in SharedPreferences ---
+  static const String _keyCrashCount = 'total_crash_count';
+  static const int _kInterstitialCrashInterval = 7; // alle 7 Abstuerze
+  int _crashCount = 0;
 
   // --- Powerup-Tracking ---
   final List<PowerupComponent> _activePowerups = [];
@@ -151,6 +160,12 @@ class RocketGame extends FlameGame
       onMilestone?.call(m);
       onStateChange?.call();
     };
+
+    // AdMob initialisieren und erste Ads im Hintergrund laden
+    await _adService.initialize();
+    _crashCount = await _loadCrashCount();
+    _adService.preloadInterstitial().ignore(); // fire-and-forget
+    _adService.preloadRewarded().ignore();     // fire-and-forget
   }
 
   Vector2 _rocketStartPosition() {
@@ -685,9 +700,53 @@ class RocketGame extends FlameGame
     await _audioManager.playCrash();
     await _scoreManager.endRun();
 
+    // Absturz-Zaehler erhoehen und persistieren
+    _crashCount++;
+    await _saveCrashCount(_crashCount);
+
+    // Interstitial-Ad nach jedem 7. Absturz (7, 14, 21, ...)
+    if (_crashCount % _kInterstitialCrashInterval == 0) {
+      // Ad blockiert UI bis sie geschlossen wird; Fallback: sofort weiter
+      await _adService.showInterstitialIfReady(
+        onAdClosed: () {
+          // Callback nach Ad-Schliessung – UI wird im Anschluss geupdatet
+        },
+      );
+    }
+
     onCrash?.call();
     onStateChange?.call();
   }
+
+  // --- Absturz-Zaehler-Persistenz ---
+
+  Future<int> _loadCrashCount() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      return prefs.getInt(_keyCrashCount) ?? 0;
+    } catch (_) {
+      return 0;
+    }
+  }
+
+  Future<void> _saveCrashCount(int count) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setInt(_keyCrashCount, count);
+    } catch (_) {
+      // Fehler beim Speichern: Zaehler laeuft im RAM weiter
+    }
+  }
+
+  // =========================================================================
+  // AD-SERVICE GETTER (fuer Crash-Overlay)
+  // =========================================================================
+
+  /// Gibt an ob eine Rewarded-Ad fuer den Crash-Screen bereit ist.
+  bool get isRewardedAdReady => _adService.isRewardedReady;
+
+  /// Zeigt Rewarded-Ad und gibt das Ergebnis zurueck.
+  Future<RewardedAdResult> showRewardedAd() => _adService.showRewardedAd();
 
   // =========================================================================
   // SPIEL STARTEN / NEUSTARTEN

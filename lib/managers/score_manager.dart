@@ -7,6 +7,7 @@ class ScoreManager {
   // --- SharedPreferences Keys ---
   static const String _keyHighscore = 'highscore';
   static const String _keyTotalCoins = 'total_coins';
+  static const String _keyPendingShieldBonus = 'pending_shield_bonus';
 
   // --- Laufzeit-Zustand ---
 
@@ -21,6 +22,9 @@ class ScoreManager {
 
   /// Highscore (persistent)
   int highscore = 0;
+
+  /// Ausstehende Bonus-Schilde aus Rewarded-Ads (persistent, verbraucht in initRun)
+  int pendingShieldBonus = 0;
 
   // --- Zeittracking ---
 
@@ -65,6 +69,7 @@ class ScoreManager {
     final prefs = await SharedPreferences.getInstance();
     highscore = prefs.getInt(_keyHighscore) ?? 0;
     totalCoins = prefs.getInt(_keyTotalCoins) ?? 0;
+    pendingShieldBonus = prefs.getInt(_keyPendingShieldBonus) ?? 0;
   }
 
   /// Speichert persistente Daten
@@ -72,6 +77,7 @@ class ScoreManager {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setInt(_keyHighscore, highscore);
     await prefs.setInt(_keyTotalCoins, totalCoins);
+    await prefs.setInt(_keyPendingShieldBonus, pendingShieldBonus);
   }
 
   /// Startet eine neue Runde (setzt Laufzeit-Zustand zurück)
