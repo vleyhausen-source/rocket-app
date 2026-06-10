@@ -16,7 +16,8 @@ dependencies:
   riverpod: ^2.5.0
   shared_preferences: ^2.2.0
   google_mobile_ads: ^9.0.0
-  flutter_jailbreak_detection: ^1.8.0
+  # flutter_jailbreak_detection entfernt: inkompatibel mit AGP 9.x (kein Namespace)
+  # Root-Detection erfolgt nativ via dart:io in security_service.dart
 
 dev_dependencies:
   flutter_test:
