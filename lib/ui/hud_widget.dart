@@ -41,7 +41,15 @@ class HudWidget extends StatelessWidget {
                 _HudLabel(icon: Icons.star, label: 'Score',
                     value: game.score.toString(), color: Colors.amber),
                 const SizedBox(height: 5),
-                _HudLabel(icon: Icons.emoji_events, label: 'Best',
+                // "Best" pulsiert golden wenn Rekord gerade gebrochen wird
+                if (game.isNewHighscoreDuringFlight)
+                  _PulsingHudLabel(
+                    icon: Icons.emoji_events,
+                    label: 'REKORD',
+                    value: game.score.toString(),
+                  )
+                else
+                  _HudLabel(icon: Icons.emoji_events, label: 'Best',
                     value: game.highscore.toString(), color: Colors.orangeAccent),
                 const SizedBox(height: 5),
                 _HudLabel(
@@ -244,6 +252,85 @@ class _HudLabel extends StatelessWidget {
             style: TextStyle(color: color, fontSize: 14,
                 fontWeight: FontWeight.bold, fontFamily: 'monospace')),
       ],
+    );
+  }
+}
+
+/// Pulsierendes HUD-Label fuer den Moment wo der Rekord gebrochen wird.
+/// Wechselt schnell zwischen Gold und Orange, skaliert leicht.
+class _PulsingHudLabel extends StatefulWidget {
+  final IconData icon;
+  final String label;
+  final String value;
+
+  const _PulsingHudLabel({
+    required this.icon,
+    required this.label,
+    required this.value,
+  });
+
+  @override
+  State<_PulsingHudLabel> createState() => _PulsingHudLabelState();
+}
+
+class _PulsingHudLabelState extends State<_PulsingHudLabel>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _ctrl;
+  late final Animation<double> _scale;
+  late final Animation<Color?> _color;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 600),
+    )..repeat(reverse: true);
+
+    _scale = Tween<double>(begin: 1.0, end: 1.12).animate(
+      CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut),
+    );
+    _color = ColorTween(
+      begin: const Color(0xFFFFD600), // Gold
+      end: const Color(0xFFFF8F00),   // Orange
+    ).animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut));
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _ctrl,
+      builder: (_, __) => Transform.scale(
+        scale: _scale.value,
+        alignment: Alignment.centerLeft,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(widget.icon, color: _color.value, size: 15),
+            const SizedBox(width: 5),
+            Text('${widget.label}: ',
+                style: TextStyle(
+                  color: _color.value?.withValues(alpha: 0.85),
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                  fontFamily: 'monospace',
+                )),
+            Text(widget.value,
+                style: TextStyle(
+                  color: _color.value,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w900,
+                  fontFamily: 'monospace',
+                )),
+          ],
+        ),
+      ),
     );
   }
 }
