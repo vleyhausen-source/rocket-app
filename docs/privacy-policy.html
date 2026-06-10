@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Datenschutzerklärung – Rocket Rise</title>
+  <style>
+    :root {
+      --bg: #0d0d1a;
+      --card: #14142b;
+      --accent: #f4a51e;
+      --text: #e8e8f0;
+      --muted: #9090b0;
+      --border: #2a2a4a;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      line-height: 1.7;
+      padding: 24px 16px 60px;
+    }
+    .container { max-width: 800px; margin: 0 auto; }
+    header {
+      text-align: center;
+      padding: 40px 0 32px;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 40px;
+    }
+    .logo { font-size: 3rem; }
+    h1 { font-size: 1.8rem; color: var(--accent); margin: 12px 0 4px; }
+    .subtitle { color: var(--muted); font-size: 0.9rem; }
+    .lang-toggle {
+      display: flex;
+      gap: 8px;
+      justify-content: center;
+      margin: 20px 0;
+    }
+    .lang-btn {
+      background: var(--card);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 6px 18px;
+      border-radius: 20px;
+      cursor: pointer;
+      font-size: 0.85rem;
+      transition: all 0.2s;
+      text-decoration: none;
+    }
+    .lang-btn.active, .lang-btn:hover {
+      background: var(--accent);
+      color: var(--bg);
+      border-color: var(--accent);
+    }
+    section {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 24px 28px;
+      margin-bottom: 20px;
+    }
+    h2 {
+      font-size: 1.1rem;
+      color: var(--accent);
+      margin-bottom: 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    h2 .icon { font-size: 1.2rem; }
+    p { color: var(--text); margin-bottom: 10px; font-size: 0.95rem; }
+    p:last-child { margin-bottom: 0; }
+    ul { padding-left: 20px; margin-bottom: 10px; }
+    li { margin-bottom: 6px; font-size: 0.95rem; }
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .badge {
+      display: inline-block;
+      background: rgba(244, 165, 30, 0.15);
+      border: 1px solid rgba(244, 165, 30, 0.4);
+      color: var(--accent);
+      font-size: 0.75rem;
+      padding: 2px 10px;
+      border-radius: 12px;
+      margin-left: 6px;
+    }
+    .notice {
+      background: rgba(244, 165, 30, 0.08);
+      border-left: 3px solid var(--accent);
+      padding: 12px 16px;
+      border-radius: 0 8px 8px 0;
+      font-size: 0.9rem;
+      margin-top: 10px;
+    }
+    footer {
+      text-align: center;
+      color: var(--muted);
+      font-size: 0.8rem;
+      margin-top: 40px;
+      padding-top: 20px;
+      border-top: 1px solid var(--border);
+    }
+
+    /* Language sections */
+    .lang-de, .lang-en { display: none; }
+    .lang-de.visible, .lang-en.visible { display: block; }
+  </style>
+</head>
+<body>
+<div class="container">
+
+  <header>
+    <div class="logo">🚀</div>
+    <h1>Rocket Rise</h1>
+    <p class="subtitle">Datenschutzerklärung &nbsp;·&nbsp; Privacy Policy</p>
+    <div class="lang-toggle">
+      <a href="#" class="lang-btn active" onclick="setLang('de'); return false;">🇩🇪 Deutsch</a>
+      <a href="#" class="lang-btn" onclick="setLang('en'); return false;">🇬🇧 English</a>
+    </div>
+  </header>
+
+  <!-- ============ DEUTSCH ============ -->
+  <div class="lang-de visible" id="content-de">
+
+    <section>
+      <h2><span class="icon">👤</span> Verantwortlicher</h2>
+      <p>
+        <strong>Entwickler:</strong> vleyhausen<br>
+        <strong>Kontakt:</strong> <a href="mailto:privacy@rocket-rise.app">privacy@rocket-rise.app</a><br>
+        <strong>App:</strong> Rocket Rise (Android)
+      </p>
+    </section>
+
+    <section>
+      <h2><span class="icon">📊</span> Welche Daten werden erhoben?</h2>
+      <p><strong>1. Gerätedaten über Google AdMob</strong> <span class="badge">Drittanbieter</span></p>
+      <ul>
+        <li>Werbe-ID (Advertising ID) des Geräts</li>
+        <li>Geräteinformationen (Modell, Betriebssystem, Sprache)</li>
+        <li>Ungefährer Standort (Land/Region, sofern Einwilligung erteilt)</li>
+        <li>App-Nutzungsdaten für Anzeigenmessung</li>
+      </ul>
+      <p style="margin-top:12px"><strong>2. Spielfortschritt</strong> <span class="badge">Lokal</span></p>
+      <ul>
+        <li>Highscore, Münzstand und Upgrades werden <em>ausschließlich lokal</em> auf deinem Gerät gespeichert (Android SharedPreferences)</li>
+        <li>Diese Daten verlassen dein Gerät nicht</li>
+        <li>Kein Account, kein Login, keine Cloud-Synchronisierung</li>
+      </ul>
+      <div class="notice">
+        ℹ️ Rocket Rise sammelt keine persönlichen Daten wie Name, E-Mail-Adresse oder Telefonnummer.
+      </div>
+    </section>
+
+    <section>
+      <h2><span class="icon">🎯</span> Zweck der Datenverarbeitung</h2>
+      <p>Gerätedaten werden ausschließlich für die Auslieferung von Werbung durch Google AdMob genutzt:</p>
+      <ul>
+        <li><strong>Mit Einwilligung:</strong> Personalisierte Werbung (interessenbasiert)</li>
+        <li><strong>Ohne Einwilligung / Ablehnung:</strong> Nicht-personalisierte Werbung (kontextbasiert)</li>
+      </ul>
+      <p>Rechtsgrundlage: Art. 6 Abs. 1 lit. a DSGVO (Einwilligung) für Nutzer im Europäischen Wirtschaftsraum.</p>
+    </section>
+
+    <section>
+      <h2><span class="icon">🤝</span> Drittanbieter</h2>
+      <p><strong>Google AdMob / Google LLC</strong></p>
+      <ul>
+        <li>Zweck: Werbevermarktung</li>
+        <li>Sitz: 1600 Amphitheatre Parkway, Mountain View, CA 94043, USA</li>
+        <li>Datenschutzrichtlinie: <a href="https://policies.google.com/privacy" target="_blank">policies.google.com/privacy</a></li>
+        <li>Datenverarbeitung ggf. in Drittländern (USA) – Google hält SCCs (Standard Contractual Clauses)</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2><span class="icon">⚖️</span> Deine Rechte (DSGVO)</h2>
+      <ul>
+        <li><strong>Einwilligung widerrufen:</strong> Öffne die App → Einstellungen → Datenschutzoptionen. Der Widerruf wirkt ab sofort (nicht-personalisierte Ads).</li>
+        <li><strong>Werbe-ID zurücksetzen:</strong> Geräteeinstellungen → Google → Anzeigen → Werbe-ID zurücksetzen</li>
+        <li><strong>Auskunft, Löschung, Berichtigung:</strong> Kontaktiere uns per E-Mail</li>
+        <li><strong>Beschwerde:</strong> Du hast das Recht, Beschwerde bei einer Datenschutz­aufsichtsbehörde einzulegen</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2><span class="icon">🗓️</span> Speicherdauer & Ablauf</h2>
+      <p>Die erteilte Einwilligung wird auf deinem Gerät gespeichert und nach <strong>13 Monaten</strong> automatisch neu abgefragt (gemäß IAB TCF-Anforderungen und DSGVO-Empfehlung).</p>
+    </section>
+
+    <section>
+      <h2><span class="icon">🔄</span> Änderungen dieser Erklärung</h2>
+      <p>Diese Datenschutzerklärung kann bei Bedarf aktualisiert werden. Die aktuelle Version ist stets unter dieser URL verfügbar.</p>
+      <p><strong>Stand:</strong> Juni 2025</p>
+    </section>
+
+  </div>
+
+  <!-- ============ ENGLISH ============ -->
+  <div class="lang-en" id="content-en">
+
+    <section>
+      <h2><span class="icon">👤</span> Controller</h2>
+      <p>
+        <strong>Developer:</strong> vleyhausen<br>
+        <strong>Contact:</strong> <a href="mailto:privacy@rocket-rise.app">privacy@rocket-rise.app</a><br>
+        <strong>App:</strong> Rocket Rise (Android)
+      </p>
+    </section>
+
+    <section>
+      <h2><span class="icon">📊</span> What data is collected?</h2>
+      <p><strong>1. Device data via Google AdMob</strong> <span class="badge">Third-party</span></p>
+      <ul>
+        <li>Advertising ID of the device</li>
+        <li>Device information (model, OS, language)</li>
+        <li>Approximate location (country/region, if consent is given)</li>
+        <li>App usage data for ad measurement</li>
+      </ul>
+      <p style="margin-top:12px"><strong>2. Game progress</strong> <span class="badge">Local only</span></p>
+      <ul>
+        <li>Highscore, coins, and upgrades are stored <em>exclusively on your device</em> (Android SharedPreferences)</li>
+        <li>This data never leaves your device</li>
+        <li>No account, no login, no cloud sync</li>
+      </ul>
+      <div class="notice">
+        ℹ️ Rocket Rise does not collect personal data such as your name, email address, or phone number.
+      </div>
+    </section>
+
+    <section>
+      <h2><span class="icon">🎯</span> Purpose of data processing</h2>
+      <p>Device data is used exclusively for serving ads through Google AdMob:</p>
+      <ul>
+        <li><strong>With consent:</strong> Personalized advertising (interest-based)</li>
+        <li><strong>Without consent / declined:</strong> Non-personalized advertising (contextual)</li>
+      </ul>
+      <p>Legal basis: Art. 6 (1)(a) GDPR (consent) for users in the European Economic Area.</p>
+    </section>
+
+    <section>
+      <h2><span class="icon">🤝</span> Third-party providers</h2>
+      <p><strong>Google AdMob / Google LLC</strong></p>
+      <ul>
+        <li>Purpose: Ad monetization</li>
+        <li>Address: 1600 Amphitheatre Parkway, Mountain View, CA 94043, USA</li>
+        <li>Privacy policy: <a href="https://policies.google.com/privacy" target="_blank">policies.google.com/privacy</a></li>
+        <li>Data may be processed in third countries (US) – Google maintains Standard Contractual Clauses (SCCs)</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2><span class="icon">⚖️</span> Your rights (GDPR)</h2>
+      <ul>
+        <li><strong>Withdraw consent:</strong> Open the app → Settings → Privacy options. Withdrawal takes effect immediately (non-personalized ads).</li>
+        <li><strong>Reset Advertising ID:</strong> Device settings → Google → Ads → Reset Advertising ID</li>
+        <li><strong>Access, deletion, correction:</strong> Contact us by email</li>
+        <li><strong>Complaint:</strong> You have the right to lodge a complaint with a data protection supervisory authority</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2><span class="icon">🗓️</span> Retention & expiry</h2>
+      <p>The granted consent is stored on your device and automatically re-requested after <strong>13 months</strong> (per IAB TCF requirements and GDPR recommendation).</p>
+    </section>
+
+    <section>
+      <h2><span class="icon">🔄</span> Changes to this policy</h2>
+      <p>This privacy policy may be updated as needed. The current version is always available at this URL.</p>
+      <p><strong>Last updated:</strong> June 2025</p>
+    </section>
+
+  </div>
+
+  <footer>
+    <p>Rocket Rise &nbsp;·&nbsp; <a href="index.html">← Zurück zur App-Seite</a></p>
+    <p style="margin-top:6px">Kontakt: <a href="mailto:privacy@rocket-rise.app">privacy@rocket-rise.app</a></p>
+  </footer>
+
+</div>
+
+<script>
+  function setLang(lang) {
+    document.getElementById('content-de').classList.toggle('visible', lang === 'de');
+    document.getElementById('content-en').classList.toggle('visible', lang === 'en');
+    document.querySelectorAll('.lang-btn').forEach(function(btn, i) {
+      btn.classList.toggle('active', (i === 0 && lang === 'de') || (i === 1 && lang === 'en'));
+    });
+  }
+</script>
+</body>
+</html>

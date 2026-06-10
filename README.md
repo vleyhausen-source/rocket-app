@@ -77,6 +77,20 @@ Tauchen zufällig während des Flugs auf:
 
 ---
 
+## 🔒 Datenschutz / Privacy
+
+Datenschutzerklärung (DSGVO-konform, Deutsch & Englisch):
+https://vleyhausen-source.github.io/rocket-app/privacy-policy.html
+
+App-Seite:
+https://vleyhausen-source.github.io/rocket-app/
+
+**GitHub Pages aktivieren:**
+Repository Settings → Pages → Source: "Deploy from a branch" →
+Branch: `main` → Folder: `/docs` → Save
+
+---
+
 ## 🔧 Development Setup
 
 ```bash

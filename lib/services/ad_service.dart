@@ -62,18 +62,35 @@ class AdService {
   bool get isInterstitialReady => _isInterstitialReady;
 
   // ==========================================================================
+  // NPA AD REQUEST
+  // ==========================================================================
+
+  /// Erstellt einen AdRequest – nicht-personalisiert wenn Nutzer Consent abgelehnt hat.
+  ///
+  /// NPA wird gesetzt wenn ConsentService.isNonPersonalized == true.
+  /// Laut Google AdMob Doku: extras={'npa': '1'} deaktiviert Personalisierung.
+  AdRequest _buildAdRequest() {
+    final bool npa = ConsentService.instance.isNonPersonalized;
+    if (npa) {
+      debugPrint('[AdService] Nicht-personalisierter AdRequest (NPA)');
+      return const AdRequest(nonPersonalizedAds: true);
+    }
+    return const AdRequest();
+  }
+
+  // ==========================================================================
   // INITIALISIERUNG
   // ==========================================================================
 
   /// Initialisiert das AdMob SDK und laedt erste Ads.
   ///
-  /// Muss einmal beim App-Start aufgerufen werden (vor [preloadInterstitial]).
+  /// Muss einmal beim App-Start aufgerufen werden (nach ConsentService.requestConsentInfoUpdate).
   /// Graceful: Fehler werden still ignoriert damit das Spiel ohne Ads laeuft.
   Future<void> initialize() async {
     if (_initialized) return;
 
-    // Zuerst Consent pruefen (DSGVO-Platzhalter)
-    await ConsentService.instance.requestConsentInfoUpdate();
+    // Hinweis: Consent wird in main.dart via ConsentService abgefragt,
+    // bevor initialize() aufgerufen wird. Hier kein erneuter Consent-Check noetig.
 
     try {
       await MobileAds.instance.initialize();
@@ -100,7 +117,7 @@ class AdService {
     try {
       await InterstitialAd.load(
         adUnitId: _AdIds.interstitial,
-        request: const AdRequest(),
+        request: _buildAdRequest(),
         adLoadCallback: InterstitialAdLoadCallback(
           onAdLoaded: (ad) {
             _interstitialAd = ad;
@@ -194,7 +211,7 @@ class AdService {
     try {
       await RewardedAd.load(
         adUnitId: _AdIds.rewarded,
-        request: const AdRequest(),
+        request: _buildAdRequest(),
         rewardedAdLoadCallback: RewardedAdLoadCallback(
           onAdLoaded: (ad) {
             _rewardedAd = ad;
