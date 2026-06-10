@@ -1,9 +1,9 @@
-# 🚀 Rocket Game
+# 🚀 Rocket Rise
 
 Ein Arcade-Spiel für Android, entwickelt mit Flutter und Flame. Steuere deine Rakete durch vier Atmosphären-Zonen, sammle Coins, kaufe Upgrades und erreich den Weltraum!
 
 <p align="center">
-  <img src="screenshots/gameplay.png" alt="Rocket Game Screenshot" width="280">
+  <img src="screenshots/gameplay.png" alt="Rocket Rise Screenshot" width="280">
   <!-- TODO: Screenshot vom Spiel einfügen -->
 </p>
 

@@ -2,7 +2,7 @@
     <!-- Internet-Permission: benoetigt fuer Google AdMob Ads -->
     <uses-permission android:name="android.permission.INTERNET"/>
     <application
-        android:label="rocket_app"
+        android:label="Rocket Rise"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity
