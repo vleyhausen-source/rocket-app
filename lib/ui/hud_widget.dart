@@ -573,6 +573,7 @@ class _CrashOverlayWidgetState extends State<CrashOverlayWidget> {
   /// Rewarded-Ad fuer Coins: +100 Coins nach vollstaendiger Ad
   Future<void> _watchAdForCoins() async {
     if (_adInProgress) return;
+    if (!mounted) return;
     setState(() => _adInProgress = true);
 
     final result = await widget.game.showRewardedAd();
@@ -590,6 +591,7 @@ class _CrashOverlayWidgetState extends State<CrashOverlayWidget> {
   /// Rewarded-Ad fuer Schild: 1 Flugschild nach vollstaendiger Ad
   Future<void> _watchAdForShield() async {
     if (_adInProgress) return;
+    if (!mounted) return;
     setState(() => _adInProgress = true);
 
     final result = await widget.game.showRewardedAd();

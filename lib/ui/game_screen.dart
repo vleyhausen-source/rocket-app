@@ -38,14 +38,24 @@ class _GameScreenState extends State<GameScreen> {
   }
 
   void _refresh() {
-    if (mounted) setState(() {});
+    if (!mounted) return;
+    // addPostFrameCallback verhindert "setState during build":
+    // Flame ruft onStateChange/onCrash aus dem update()-Loop, der im selben
+    // Frame wie der Flutter-Build laufen kann.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) setState(() {});
+    });
   }
 
   void _onMilestone(MilestoneDefinition m) {
     if (!mounted) return;
-    setState(() {
-      _pendingBanners.add(m);
-      if (_activeBanner == null) _showNextBanner();
+    // Meilenstein-Callback kommt aus dem Flame update()-Loop → postFrameCallback
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      setState(() {
+        _pendingBanners.add(m);
+        if (_activeBanner == null) _showNextBanner();
+      });
     });
   }
 
@@ -127,7 +137,11 @@ class _GameScreenState extends State<GameScreen> {
               key: ValueKey(_activeBanner!.label + DateTime.now().millisecondsSinceEpoch.toString()),
               milestone: _activeBanner!,
               onDone: () {
-                if (mounted) setState(() => _showNextBanner());
+                // onDone kommt aus einem Timer/AnimationController → postFrame sichert gegen
+                // seltene Race-Conditions wenn Flutter gerade rebuildet
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  if (mounted) setState(() => _showNextBanner());
+                });
               },
             ),
 
@@ -137,10 +151,12 @@ class _GameScreenState extends State<GameScreen> {
               key: const ValueKey('new_record_banner'),
               onDone: () {
                 // isNewHighscoreDuringFlight zuruecksetzen damit Banner nicht nochmal erscheint
-                if (mounted) {
-                  _game.clearNewHighscoreBanner();
-                  setState(() {});
-                }
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  if (mounted) {
+                    _game.clearNewHighscoreBanner();
+                    setState(() {});
+                  }
+                });
               },
             ),
         ],
