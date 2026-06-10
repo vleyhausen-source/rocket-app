@@ -11,7 +11,10 @@ import 'package:rocket_app/ui/transitions.dart';
 
 /// Animiertes Hauptmenü mit Sternenhintergrund und Raketen-Logo
 class MainMenuScreen extends StatefulWidget {
-  const MainMenuScreen({super.key});
+  /// Wenn true: Root-Warnung nach dem ersten Frame anzeigen
+  final bool showRootWarning;
+
+  const MainMenuScreen({super.key, this.showRootWarning = false});
 
   @override
   State<MainMenuScreen> createState() => _MainMenuScreenState();
@@ -67,7 +70,51 @@ class _MainMenuScreenState extends State<MainMenuScreen>
       if (mounted) _logoCtrl.forward();
     });
 
+    // Root-Warnung anzeigen wenn Gerät modifiziert scheint
+    if (widget.showRootWarning) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _showRootWarningDialog();
+      });
+    }
+
     _loadData();
+  }
+
+  /// Root-Warnung als nicht-blockierender Dialog anzeigen.
+  /// Nutzer kann weiterspielen – App wird nicht geblockt.
+  void _showRootWarningDialog() {
+    showDialog<void>(
+      context: context,
+      barrierDismissible: true,
+      builder: (_) => AlertDialog(
+        backgroundColor: const Color(0xFF1A1A2E),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Row(
+          children: [
+            Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 24),
+            SizedBox(width: 8),
+            Text(
+              'Gerät modifiziert',
+              style: TextStyle(color: Colors.orange, fontSize: 18),
+            ),
+          ],
+        ),
+        content: const Text(
+          'Dieses Gerät scheint modifiziert zu sein. '
+          'Das Spiel könnte nicht korrekt funktionieren.',
+          style: TextStyle(color: Colors.white70, fontSize: 14),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text(
+              'Verstanden',
+              style: TextStyle(color: Colors.orange),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _loadData() async {

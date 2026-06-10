@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// Verwaltet Score, Highscore und persistente Coins
@@ -114,17 +115,66 @@ class ScoreManager {
     coinsThisRun += value;
   }
 
+  // ==========================================================================
+  // ANTI-CHEAT VALIDIERUNG
+  // ==========================================================================
+
+  /// Max. Coins pro Sekunde die physisch erreichbar sind.
+  /// Bei 20 Coins/Run und ~30s Flug ≈ 0.7 Coins/s.
+  /// Großzügiger Puffer auf 50/s fuer Magnet-Burst-Szenarien.
+  static const double _kMaxCoinsPerSecond = 50.0;
+
+  /// Max. realistischer Score fuer einen Einzelflug ohne Upgrades.
+  /// Mit vollstaendigen Upgrades + Space: ~50000 Punkte.
+  /// Werte darüber markieren die Session als verdächtig.
+  static const int _kMaxPlausibleScore = 500000;
+
+  /// Gibt zurück ob die aktuellen Run-Werte plausibel sind.
+  /// [true] = OK, [false] = Werte unrealistisch (möglicher Cheat).
+  bool _validateRun() {
+    // Kein Zeittracking = kann nicht validiert werden (Fallback: akzeptieren)
+    if (elapsedSeconds <= 0) return true;
+
+    // Coins pro Sekunde prüfen
+    final double coinsPerSec = coinsThisRun / elapsedSeconds;
+    if (coinsPerSec > _kMaxCoinsPerSecond) {
+      debugPrint(
+        '[AntiCheat] Verdächtige Coin-Rate: '
+        '${coinsPerSec.toStringAsFixed(1)}/s '
+        '(max ${_kMaxCoinsPerSecond.toStringAsFixed(0)}/s)',
+      );
+      return false;
+    }
+
+    // Gesamtscore-Plausibilität prüfen
+    final int score = totalScore;
+    if (score > _kMaxPlausibleScore) {
+      debugPrint(
+        '[AntiCheat] Verdächtiger Score: $score '
+        '(max $_kMaxPlausibleScore)',
+      );
+      return false;
+    }
+
+    return true;
+  }
+
   /// Runde beenden: Scores gutschreiben und persistieren
   Future<void> endRun() async {
     final int finalScore = totalScore;
 
-    // Highscore prüfen und ggf. aktualisieren
-    if (finalScore > highscore) {
+    // Anti-Cheat: Highscore nur bei plausibler Session speichern
+    final bool valid = _validateRun();
+    if (valid && finalScore > highscore) {
       highscore = finalScore;
+    } else if (!valid) {
+      debugPrint('[AntiCheat] Session als verdächtig markiert – Highscore nicht gespeichert');
     }
 
-    // Coins persistent gutschreiben
-    totalCoins += coinsThisRun;
+    // Coins nur bei valider Session gutschreiben
+    if (valid) {
+      totalCoins += coinsThisRun;
+    }
 
     await save();
   }

@@ -77,10 +77,33 @@ jobs:
           path: build/release/rocket-app-debug-arm64.apk
           retention-days: 30
 
+      # --- Release AppBundle mit Dart-Obfuscation & Debug-Symbolen ---
+      # (fuer spaetere Play Store Einreichung und Crashlytics)
+      - name: Build release AppBundle (obfuscated)
+        run: |
+          flutter build appbundle --release \
+            --obfuscate \
+            --split-debug-info=build/debug-info
+        # Hinweis: Signing-Keystore fehlt noch fuer echtes Play-Store-Release.
+        # Derzeit mit Debug-Keys signiert (signingConfig = debug in build.gradle.kts).
+
+      - name: Upload release AppBundle as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: rocket-app-release-aab
+          path: build/app/outputs/bundle/release/app-release.aab
+          retention-days: 30
+
+      - name: Upload debug symbols as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: rocket-app-debug-symbols
+          path: build/debug-info/
+          retention-days: 30
+
       - name: APK download info
         run: |
           echo "=================================="
           echo "APKs als Artifacts verfügbar (30 Tage)"
-          echo "Gehe zur Actions-Seite → diesen Run → Artifacts"
-          echo "Oder direkter Download-Link in der Run-Übersicht"
+          echo "Gehe zur Actions-Seite -> diesen Run -> Artifacts"
           echo "=================================="
