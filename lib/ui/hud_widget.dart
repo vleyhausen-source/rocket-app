@@ -646,19 +646,21 @@ class _CrashOverlayWidgetState extends State<CrashOverlayWidget> {
                 ),
               ),
               const SizedBox(height: 10),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
+              // Full-width Column: Buttons untereinander statt nebeneinander
+              // (Row wuerde 21px Overflow erzeugen auf schmalen Screens)
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // +100 Coins Button
+                  // +100 Coins Button (volle Breite)
                   _AdRewardButton(
-                    label: '+100 Coins',
+                    label: '+100 Coins anschauen',
                     icon: '🎬',
                     onPressed: _adInProgress ? null : _watchAdForCoins,
                   ),
-                  const SizedBox(width: 12),
-                  // +1 Schild Button
+                  const SizedBox(height: 8),
+                  // +1 Schild Button (volle Breite)
                   _AdRewardButton(
-                    label: '+1 Schild',
+                    label: '+1 Schild anschauen',
                     icon: '🎬',
                     onPressed: _adInProgress ? null : _watchAdForShield,
                   ),
