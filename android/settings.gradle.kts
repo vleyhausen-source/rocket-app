@@ -20,9 +20,10 @@ pluginManagement {
 plugins {
     id("dev.flutter.flutter-plugin-loader") version "1.0.0"
     id("com.android.application") version "9.0.1" apply false
-    // Kotlin 2.0.21: stabil, kompatibel mit audioplayers_android 5.x (KGP-Warning vermieden).
-    // 2.3.x triggert KGP-Deprecation weil audioplayers_android noch alten Plugin-Stil nutzt.
-    id("org.jetbrains.kotlin.android") version "2.0.21" apply false
+    // Kotlin 2.2.20: >= 2.2.10 damit AGP 9.0 nicht automatisch upgraded.
+    // 2.0.21 wuerde durch AGP 9.0 auf 2.2.10 erzwungen + Flutter-Warning
+    // 2.2.20 ist stabil und kompatibel mit audioplayers_android 5.x.
+    id("org.jetbrains.kotlin.android") version "2.2.20" apply false
 }
 
 include(":app")
