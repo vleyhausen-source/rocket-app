@@ -469,11 +469,7 @@ class RocketGame extends FlameGame
       case PowerupType.shield:
         _flightShields = (_flightShields + 1).clamp(0, _kFlightShieldMax);
     }
-    onMilestone?.call(MilestoneDefinition(
-      altitudeM: 0,
-      coinBonus: 0,
-      label: type.label,
-    ));
+    // Kein Banner: Powerup-Effekt ist im HUD (Schild-Icons, Magnet-Timer) sichtbar
     onStateChange?.call();
   }
 
@@ -747,6 +743,11 @@ class RocketGame extends FlameGame
 
   /// Zeigt Rewarded-Ad und gibt das Ergebnis zurueck.
   Future<RewardedAdResult> showRewardedAd() => _adService.showRewardedAd();
+
+  /// Setzt den Rekord-Banner-Flag zurück (nach Ablauf der Banner-Animation).
+  void clearNewHighscoreBanner() {
+    _isNewHighscoreDuringFlight = false;
+  }
 
   // =========================================================================
   // SPIEL STARTEN / NEUSTARTEN

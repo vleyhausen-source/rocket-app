@@ -143,9 +143,13 @@ class _MilestoneBannerState extends State<MilestoneBanner>
   }
 }
 
-/// Neuer-Rekord-Banner -- goldenes Puls-Banner
+/// Neuer-Rekord-Banner -- fährt einmalig ein, bleibt 2s, fährt wieder raus.
+/// Wird nur einmal pro Flug gezeigt (sobald der Rekord gebrochen wird).
 class NewRecordBanner extends StatefulWidget {
-  const NewRecordBanner({super.key});
+  /// Callback wenn der Banner fertig animiert ist (zum Ausblenden aus dem Stack)
+  final VoidCallback? onDone;
+
+  const NewRecordBanner({super.key, this.onDone});
 
   @override
   State<NewRecordBanner> createState() => _NewRecordBannerState();
@@ -153,57 +157,85 @@ class NewRecordBanner extends StatefulWidget {
 
 class _NewRecordBannerState extends State<NewRecordBanner>
     with SingleTickerProviderStateMixin {
-  late final AnimationController _pulse;
+  late final AnimationController _ctrl;
+  late final Animation<Offset> _slide;
+  late final Animation<double> _fade;
 
   @override
   void initState() {
     super.initState();
-    _pulse = AnimationController(
+    // 350ms rein, 2000ms halten, 300ms raus = 2650ms gesamt
+    _ctrl = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 800),
-    )..repeat(reverse: true);
+      duration: const Duration(milliseconds: 2650),
+    );
+
+    _slide = TweenSequence<Offset>([
+      TweenSequenceItem(
+        tween: Tween(begin: const Offset(0, -1.5), end: Offset.zero)
+            .chain(CurveTween(curve: Curves.easeOutCubic)),
+        weight: 13.2, // 350/2650
+      ),
+      TweenSequenceItem(
+        tween: ConstantTween(Offset.zero),
+        weight: 75.5, // 2000/2650
+      ),
+      TweenSequenceItem(
+        tween: Tween(begin: Offset.zero, end: const Offset(0, -1.5))
+            .chain(CurveTween(curve: Curves.easeInCubic)),
+        weight: 11.3, // 300/2650
+      ),
+    ]).animate(_ctrl);
+
+    _fade = TweenSequence<double>([
+      TweenSequenceItem(tween: Tween(begin: 0.0, end: 1.0), weight: 13.2),
+      TweenSequenceItem(tween: ConstantTween(1.0), weight: 75.5),
+      TweenSequenceItem(tween: Tween(begin: 1.0, end: 0.0), weight: 11.3),
+    ]).animate(_ctrl);
+
+    _ctrl.forward().then((_) => widget.onDone?.call());
   }
 
   @override
   void dispose() {
-    _pulse.dispose();
+    _ctrl.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return Positioned(
-      bottom: 100,
+      top: MediaQuery.of(context).padding.top + 12,
       left: 0,
       right: 0,
-      child: Center(
-        child: AnimatedBuilder(
-          animation: _pulse,
-          builder: (_, __) => Transform.scale(
-            scale: 0.97 + _pulse.value * 0.06,
+      child: SlideTransition(
+        position: _slide,
+        child: FadeTransition(
+          opacity: _fade,
+          child: Center(
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+              margin: const EdgeInsets.symmetric(horizontal: 24),
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
               decoration: BoxDecoration(
                 gradient: const LinearGradient(
-                  colors: [Color(0xFFFFD600), Color(0xFFFF8F00)],
+                  colors: [Color(0xFFB8860B), Color(0xFFFFD600)],
                 ),
-                borderRadius: BorderRadius.circular(24),
+                borderRadius: BorderRadius.circular(32),
                 boxShadow: [
                   BoxShadow(
-                    color: const Color(0xFFFFD600)
-                        .withValues(alpha: 0.3 + _pulse.value * 0.4),
-                    blurRadius: 20,
-                    spreadRadius: 4,
+                    color: const Color(0xFFFFD600).withValues(alpha: 0.5),
+                    blurRadius: 24,
+                    spreadRadius: 3,
                   ),
                 ],
               ),
               child: const Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.star, color: Colors.black87, size: 18),
+                  Icon(Icons.star, color: Colors.black87, size: 20),
                   SizedBox(width: 8),
                   Text(
-                    'NEUER REKORD!',
+                    '🏆 NEUER REKORD!',
                     style: TextStyle(
                       color: Colors.black87,
                       fontWeight: FontWeight.w900,
@@ -212,7 +244,7 @@ class _NewRecordBannerState extends State<NewRecordBanner>
                     ),
                   ),
                   SizedBox(width: 8),
-                  Icon(Icons.star, color: Colors.black87, size: 18),
+                  Icon(Icons.star, color: Colors.black87, size: 20),
                 ],
               ),
             ),

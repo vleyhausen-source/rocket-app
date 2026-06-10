@@ -131,9 +131,18 @@ class _GameScreenState extends State<GameScreen> {
               },
             ),
 
-          // Neuer-Rekord-Banner (nur während Flug)
+          // Neuer-Rekord-Banner (nur während Flug, verschwindet nach 2s von selbst)
           if (_game.isPlaying && _game.isNewHighscoreDuringFlight)
-            const NewRecordBanner(),
+            NewRecordBanner(
+              key: const ValueKey('new_record_banner'),
+              onDone: () {
+                // isNewHighscoreDuringFlight zuruecksetzen damit Banner nicht nochmal erscheint
+                if (mounted) {
+                  _game.clearNewHighscoreBanner();
+                  setState(() {});
+                }
+              },
+            ),
         ],
       ),
     );
