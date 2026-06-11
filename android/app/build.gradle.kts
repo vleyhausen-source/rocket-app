@@ -7,10 +7,11 @@ plugins {
     id("dev.flutter.flutter-gradle-plugin")
 }
 
-// key.properties einlesen
+// key.properties einlesen (lokal vorhanden oder via CI-Step erzeugt)
 val keyPropertiesFile = rootProject.file("key.properties")
 val keyProperties = Properties()
-if (keyPropertiesFile.exists()) {
+val hasSigningConfig = keyPropertiesFile.exists()
+if (hasSigningConfig) {
     keyProperties.load(FileInputStream(keyPropertiesFile))
 }
 
@@ -26,12 +27,14 @@ android {
 
     signingConfigs {
         create("release") {
-            storeFile = keyPropertiesFile.parentFile.resolve(
-                keyProperties["storeFile"] as String
-            )
-            storePassword = keyProperties["storePassword"] as String
-            keyAlias = keyProperties["keyAlias"] as String
-            keyPassword = keyProperties["keyPassword"] as String
+            if (hasSigningConfig) {
+                storeFile = keyPropertiesFile.parentFile.resolve(
+                    keyProperties["storeFile"] as String
+                )
+                storePassword = keyProperties["storePassword"] as String
+                keyAlias = keyProperties["keyAlias"] as String
+                keyPassword = keyProperties["keyPassword"] as String
+            }
         }
     }
 
@@ -48,7 +51,12 @@ android {
 
     buildTypes {
         release {
-            signingConfig = signingConfigs.getByName("release")
+            // Release-Signing wenn key.properties vorhanden, sonst debug (lokale Entwicklung)
+            signingConfig = if (hasSigningConfig) {
+                signingConfigs.getByName("release")
+            } else {
+                signingConfigs.getByName("debug")
+            }
 
             // Code-Verkleinerung & Verschleierung mit R8
             isMinifyEnabled = true
