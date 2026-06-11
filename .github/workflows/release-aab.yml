@@ -40,21 +40,14 @@ jobs:
       - name: Install Flutter dependencies
         run: flutter pub get
 
-      # ── 5. Keystore aus Secret dekodieren ─────────────────────────────────────
+      # ── 5. Keystore dekodieren + key.properties schreiben ────────────────────
       - name: Decode Keystore
         run: |
-          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode \
-            > android/app/rocket-rise-key.jks
-
-      # ── 6. key.properties schreiben (nur in CI, nie im Repo) ─────────────────
-      - name: Create key.properties
-        run: |
-          cat > android/key.properties <<EOF
-          storePassword=${{ secrets.KEY_STORE_PASSWORD }}
-          keyPassword=${{ secrets.KEY_PASSWORD }}
-          keyAlias=${{ secrets.KEY_ALIAS }}
-          storeFile=rocket-rise-key.jks
-          EOF
+          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > android/app/rocket-rise-key.jks
+          echo "storePassword=${{ secrets.KEY_STORE_PASSWORD }}" > android/key.properties
+          echo "keyPassword=${{ secrets.KEY_PASSWORD }}" >> android/key.properties
+          echo "keyAlias=${{ secrets.KEY_ALIAS }}" >> android/key.properties
+          echo "storeFile=rocket-rise-key.jks" >> android/key.properties
 
       # ── 7. Dart Analyse ───────────────────────────────────────────────────────
       - name: Dart analyze
