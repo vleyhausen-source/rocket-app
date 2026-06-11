@@ -47,7 +47,14 @@ jobs:
           echo "storePassword=${{ secrets.KEY_STORE_PASSWORD }}" > android/key.properties
           echo "keyPassword=${{ secrets.KEY_PASSWORD }}" >> android/key.properties
           echo "keyAlias=${{ secrets.KEY_ALIAS }}" >> android/key.properties
-          echo "storeFile=rocket-rise-key.jks" >> android/key.properties
+          echo "storeFile=app/rocket-rise-key.jks" >> android/key.properties
+
+      # ── 6. Dateien verifizieren (Debug) ───────────────────────────────────────
+      - name: Verify signing files
+        run: |
+          ls -la android/app/
+          ls -la android/
+          cat android/key.properties
 
       # ── 7. Dart Analyse ───────────────────────────────────────────────────────
       - name: Dart analyze
