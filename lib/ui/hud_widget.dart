@@ -535,8 +535,8 @@ class StartOverlayWidget extends StatelessWidget {
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(
                         horizontal: 28, vertical: 14)),
-                child: const Text('START',
-                    style: TextStyle(fontSize: 18, letterSpacing: 4)),
+                child: Text(context.l10n.menuPlay,
+                    style: const TextStyle(fontSize: 18, letterSpacing: 4)),
               ),
               const SizedBox(width: 16),
               ElevatedButton.icon(

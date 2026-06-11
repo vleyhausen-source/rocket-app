@@ -313,7 +313,7 @@ class _StatsSection extends StatelessWidget {
           if (scoreMgr.totalCoins > 0)
             _StatChip(
               icon: Icons.monetization_on,
-              label: 'COINS',
+              label: context.l10n.hudCoins,
               value: '${scoreMgr.totalCoins}',
               color: RocketTheme.accentGold,
             ),
