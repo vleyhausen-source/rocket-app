@@ -13,8 +13,8 @@
 -dontwarn io.flutter.**
 
 # Dart-generierte Klassen und Entrypoints behalten
--keep class com.example.rocket_app.** { *; }
--keep class com.example.rocket_app.MainActivity { *; }
+-keep class com.vleyhausen.rocketrise.** { *; }
+-keep class com.vleyhausen.rocketrise.MainActivity { *; }
 
 # --- Google Mobile Ads (AdMob) ---
 # Offizielle AdMob ProGuard-Regeln

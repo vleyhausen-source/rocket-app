@@ -1,4 +1,4 @@
-package com.example.rocket_app
+package com.vleyhausen.rocketrise
 
 import io.flutter.embedding.android.FlutterActivity
 
