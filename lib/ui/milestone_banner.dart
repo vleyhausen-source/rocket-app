@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:rocket_app/l10n/l10n.dart';
+import 'package:rocket_app/l10n/upgrade_l10n.dart';
 import 'package:rocket_app/managers/milestone_manager.dart';
 import 'package:rocket_app/ui/theme.dart';
 
@@ -104,7 +106,7 @@ class _MilestoneBannerState extends State<MilestoneBanner>
                   const SizedBox(width: 10),
                   Flexible(
                     child: Text(
-                      widget.milestone.label,
+                      widget.milestone.localizedLabel(context),
                       style: const TextStyle(
                         color: Colors.white,
                         fontSize: 15,
@@ -229,22 +231,22 @@ class _NewRecordBannerState extends State<NewRecordBanner>
                   ),
                 ],
               ),
-              child: const Row(
+              child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.star, color: Colors.black87, size: 20),
-                  SizedBox(width: 8),
+                  const Icon(Icons.star, color: Colors.black87, size: 20),
+                  const SizedBox(width: 8),
                   Text(
-                    '🏆 NEUER REKORD!',
-                    style: TextStyle(
+                    '🏆 ${context.l10n.milestoneNewRecord}',
+                    style: const TextStyle(
                       color: Colors.black87,
                       fontWeight: FontWeight.w900,
                       fontSize: 15,
                       letterSpacing: 2,
                     ),
                   ),
-                  SizedBox(width: 8),
-                  Icon(Icons.star, color: Colors.black87, size: 20),
+                  const SizedBox(width: 8),
+                  const Icon(Icons.star, color: Colors.black87, size: 20),
                 ],
               ),
             ),

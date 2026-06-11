@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:rocket_app/l10n/l10n.dart';
+import 'package:rocket_app/l10n/upgrade_l10n.dart';
 import 'package:rocket_app/managers/audio_manager.dart';
 import 'package:rocket_app/managers/score_manager.dart';
 import 'package:rocket_app/managers/upgrade_manager.dart';
@@ -57,7 +59,7 @@ class _ShopScreenState extends State<ShopScreen>
 
     if (mounted) {
       setState(() => _purchasingIds.remove(upg.id));
-      if (success) {_showPurchaseSuccess(upg.name); AudioManager.instance.playUpgrade();}
+      if (success) {_showPurchaseSuccess(upg.localizedName(context)); AudioManager.instance.playUpgrade();}
     }
   }
 
@@ -65,7 +67,7 @@ class _ShopScreenState extends State<ShopScreen>
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
-          'Nicht genug Coins! Benötigt: $needed',
+          context.l10n.shopNotEnoughCoins(needed),
           style: const TextStyle(color: Colors.white),
         ),
         backgroundColor: Colors.red.shade800,
@@ -82,7 +84,7 @@ class _ShopScreenState extends State<ShopScreen>
           children: [
             const Icon(Icons.check_circle, color: Colors.greenAccent),
             const SizedBox(width: 8),
-            Text('$name gekauft!',
+            Text(context.l10n.shopPurchaseSuccess(name),
                 style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
           ],
         ),
@@ -100,9 +102,9 @@ class _ShopScreenState extends State<ShopScreen>
       appBar: AppBar(
         backgroundColor: const Color(0xFF0A0A1A),
         foregroundColor: Colors.white,
-        title: const Text(
-          '🚀 UPGRADE-SHOP',
-          style: TextStyle(letterSpacing: 3, fontWeight: FontWeight.bold),
+        title: Text(
+          '🚀 ${context.l10n.shopTitle}',
+          style: const TextStyle(letterSpacing: 3, fontWeight: FontWeight.bold),
         ),
         // Coin-Anzeige oben rechts
         actions: [
@@ -118,7 +120,7 @@ class _ShopScreenState extends State<ShopScreen>
           tabs: _tabs.map((cat) {
             return Tab(
               icon: Icon(cat.icon, color: cat.color, size: 20),
-              text: cat.label,
+              text: cat.localizedLabel(context),
             );
           }).toList(),
           labelStyle: const TextStyle(
@@ -253,7 +255,7 @@ class _UpgradeCard extends StatelessWidget {
                       Row(
                         children: [
                           Text(
-                            upgrade.name,
+                                  upgrade.localizedName(context),
                             style: const TextStyle(
                               color: Colors.white,
                               fontSize: 16,
@@ -282,7 +284,7 @@ class _UpgradeCard extends StatelessWidget {
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        upgrade.description,
+                        upgrade.localizedDescription(context),
                         style: const TextStyle(
                             color: Colors.white54, fontSize: 12),
                       ),

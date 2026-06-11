@@ -10,12 +10,15 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  flutter_localizations:
+    sdk: flutter
   flame: ^1.18.0
   flame_audio: ^2.10.0
   flutter_riverpod: ^2.5.0
   riverpod: ^2.5.0
   shared_preferences: ^2.2.0
   google_mobile_ads: ^9.0.0
+  intl: ^0.20.2
   # flutter_jailbreak_detection entfernt: inkompatibel mit AGP 9.x (kein Namespace)
   # Root-Detection erfolgt nativ via dart:io in security_service.dart
 
@@ -27,6 +30,7 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  generate: true
   assets:
     - assets/images/
     - assets/audio/

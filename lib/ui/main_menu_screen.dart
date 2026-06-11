@@ -1,5 +1,6 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
+import 'package:rocket_app/l10n/l10n.dart';
 import 'package:rocket_app/managers/score_manager.dart';
 import 'package:rocket_app/managers/streak_manager.dart';
 import 'package:rocket_app/managers/upgrade_manager.dart';
@@ -83,33 +84,33 @@ class _MainMenuScreenState extends State<MainMenuScreen>
   /// Root-Warnung als nicht-blockierender Dialog anzeigen.
   /// Nutzer kann weiterspielen – App wird nicht geblockt.
   void _showRootWarningDialog() {
+    final l10n = context.l10n;
     showDialog<void>(
       context: context,
       barrierDismissible: true,
       builder: (_) => AlertDialog(
         backgroundColor: const Color(0xFF1A1A2E),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Row(
+        title: Row(
           children: [
-            Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 24),
-            SizedBox(width: 8),
+            const Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 24),
+            const SizedBox(width: 8),
             Text(
-              'Gerät modifiziert',
-              style: TextStyle(color: Colors.orange, fontSize: 18),
+              l10n.securityRootWarningTitle,
+              style: const TextStyle(color: Colors.orange, fontSize: 18),
             ),
           ],
         ),
-        content: const Text(
-          'Dieses Gerät scheint modifiziert zu sein. '
-          'Das Spiel könnte nicht korrekt funktionieren.',
-          style: TextStyle(color: Colors.white70, fontSize: 14),
+        content: Text(
+          l10n.securityRootWarningBody,
+          style: const TextStyle(color: Colors.white70, fontSize: 14),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: const Text(
-              'Verstanden',
-              style: TextStyle(color: Colors.orange),
+            child: Text(
+              l10n.securityRootWarningOk,
+              style: const TextStyle(color: Colors.orange),
             ),
           ),
         ],
@@ -303,7 +304,7 @@ class _StatsSection extends StatelessWidget {
           if (scoreMgr.highscore > 0)
             _StatChip(
               icon: Icons.emoji_events,
-              label: 'REKORD',
+              label: context.l10n.menuRecord,
               value: '${scoreMgr.highscore}',
               color: RocketTheme.accentGold,
             ),
@@ -414,21 +415,21 @@ class _ButtonSection extends StatelessWidget {
                     Colors.white.withValues(alpha: 0.1),
                   ),
                 ),
-                child: const Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.play_arrow_rounded, size: 28),
-                    SizedBox(width: 8),
-                    Text(
-                      'SPIELEN',
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: 6,
-                        fontFamily: 'monospace',
-                      ),
+                child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.play_arrow_rounded, size: 28),
+                  const SizedBox(width: 8),
+                  Text(
+                    context.l10n.menuPlay,
+                    style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 6,
+                      fontFamily: 'monospace',
                     ),
-                  ],
+                  ),
+                ],
                 ),
               ),
             ),
@@ -442,9 +443,9 @@ class _ButtonSection extends StatelessWidget {
             child: OutlinedButton.icon(
               onPressed: onShop,
               icon: const Icon(Icons.store_rounded, size: 22),
-              label: const Text(
-                'UPGRADE-SHOP',
-                style: TextStyle(
+              label: Text(
+                context.l10n.menuUpgradeShop,
+                style: const TextStyle(
                   fontSize: 15,
                   fontWeight: FontWeight.bold,
                   letterSpacing: 4,

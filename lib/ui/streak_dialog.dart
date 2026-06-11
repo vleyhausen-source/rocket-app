@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:rocket_app/l10n/l10n.dart';
 import 'package:rocket_app/managers/streak_manager.dart';
 import 'package:rocket_app/ui/theme.dart';
 
@@ -84,9 +85,9 @@ class _LoginBonusDialogState extends State<LoginBonusDialog>
             mainAxisSize: MainAxisSize.min,
             children: [
               // Titel
-              const Text(
-                'TAGES-BONUS',
-                style: TextStyle(
+              Text(
+                context.l10n.streakDailyBonus,
+                style: const TextStyle(
                   color: Colors.white70,
                   fontSize: 12,
                   letterSpacing: 4,
@@ -95,7 +96,7 @@ class _LoginBonusDialogState extends State<LoginBonusDialog>
               ),
               const SizedBox(height: 8),
               Text(
-                isDay7 ? '🎉 TAG 7! 🎉' : 'TAG $day',
+                isDay7 ? '🎉 ${context.l10n.streakDay7} 🎉' : context.l10n.streakDay(day),
                 style: TextStyle(
                   color: isDay7 ? const Color(0xFFFFD600) : Colors.white,
                   fontSize: isDay7 ? 32 : 28,
@@ -147,9 +148,9 @@ class _LoginBonusDialogState extends State<LoginBonusDialog>
                       color: RocketTheme.primaryPurple.withValues(alpha: 0.5),
                     ),
                   ),
-                  child: const Text(
-                    '+ Zufälliges Upgrade Stufe 1! 🎁',
-                    style: TextStyle(
+                  child: Text(
+                    context.l10n.streakRandomUpgrade,
+                    style: const TextStyle(
                       color: RocketTheme.primaryGlow,
                       fontSize: 13,
                       fontWeight: FontWeight.bold,
@@ -163,8 +164,8 @@ class _LoginBonusDialogState extends State<LoginBonusDialog>
               // Streak-Info
               Text(
                 day < 7
-                    ? 'Morgen: +${StreakManager.dailyBonuses[day.clamp(0, 6)]} Coins'
-                    : 'Streak läuft weiter! Tag 1 nächstes Mal.',
+                    ? context.l10n.streakTomorrow(StreakManager.dailyBonuses[day.clamp(0, 6)])
+                    : context.l10n.streakContinues,
                 style: const TextStyle(
                   color: Colors.white38,
                   fontSize: 12,
@@ -187,9 +188,9 @@ class _LoginBonusDialogState extends State<LoginBonusDialog>
                       borderRadius: BorderRadius.circular(14),
                     ),
                   ),
-                  child: const Text(
-                    'EINSAMMELN!',
-                    style: TextStyle(
+                  child: Text(
+                    context.l10n.streakClaim,
+                    style: const TextStyle(
                       fontWeight: FontWeight.w900,
                       fontSize: 16,
                       letterSpacing: 3,
@@ -317,7 +318,7 @@ class StreakBadge extends StatelessWidget {
           const Text('🔥', style: TextStyle(fontSize: 14)),
           const SizedBox(width: 6),
           Text(
-            'TAG $streakDay',
+            '${context.l10n.menuDay} $streakDay',
             style: const TextStyle(
               color: Colors.white70,
               fontSize: 12,

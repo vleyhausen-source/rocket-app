@@ -1,0 +1,124 @@
+{
+  "@@locale": "en",
+
+  "appTitle": "Rocket Rise",
+
+  "menuPlay": "PLAY",
+  "menuUpgradeShop": "UPGRADE SHOP",
+  "menuRecord": "BEST",
+  "menuDay": "DAY",
+
+  "hudScore": "Score",
+  "hudBest": "Best",
+  "hudHeight": "Height",
+  "hudCoins": "Coins",
+  "hudFuel": "Fuel",
+
+  "zoneTroposphere": "TROPOSPHERE",
+  "zoneUpperAtmosphere": "UPPER ATMOSPHERE",
+  "zoneStratosphere": "STRATOSPHERE",
+  "zoneSpace": "SPACE",
+
+  "shopTitle": "UPGRADE SHOP",
+  "shopNotEnoughCoins": "Not enough Coins! Need: {cost}",
+  "@shopNotEnoughCoins": {
+    "placeholders": {
+      "cost": { "type": "int" }
+    }
+  },
+  "shopPurchaseSuccess": "{name} purchased!",
+  "@shopPurchaseSuccess": {
+    "placeholders": {
+      "name": { "type": "String" }
+    }
+  },
+
+  "upgCatEngine": "Engine",
+  "upgCatTank": "Tank",
+  "upgCatHull": "Hull",
+  "upgCatControl": "Controls",
+  "upgCatSpecial": "Special",
+
+  "upgThrustBoost": "Thrust Booster",
+  "upgThrustBoostDesc": "Increases maximum engine thrust.",
+  "upgFuelEfficiency": "Fuel Efficiency",
+  "upgFuelEfficiencyDesc": "Reduces fuel consumption.",
+  "upgTankCapacity": "Tank Capacity",
+  "upgTankCapacityDesc": "Enlarges the fuel tank.",
+  "upgRefuelSpeed": "Quick Refuel",
+  "upgRefuelSpeedDesc": "Starts each run with extra fuel.",
+  "upgHullArmor": "Armor",
+  "upgHullArmorDesc": "Survives a wall collision without crashing.",
+  "upgAerodynamics": "Aerodynamics",
+  "upgAerodynamicsDesc": "Reduces air drag, higher top speed.",
+  "upgLateralControl": "Attitude Control",
+  "upgLateralControlDesc": "Improved left/right steering.",
+  "upgStabilizer": "Stabilizer",
+  "upgStabilizerDesc": "Rocket returns to upright position faster.",
+  "upgCoinMagnet": "Coin Magnet",
+  "upgCoinMagnetDesc": "Automatically attracts coins within a radius.",
+  "upgBooster": "Booster",
+  "upgBoosterDesc": "One-time thrust burst per flight (double thrust for 3s).",
+  "upgShield": "Shield",
+  "upgShieldDesc": "Survives the first crash per flight without game over.",
+  "upgAutopilot": "Autopilot",
+  "upgAutopilotDesc": "Briefly keeps the rocket stable automatically.",
+
+  "crashTitle": "CRASH",
+  "crashNewRecord": "NEW RECORD!",
+  "crashHeight": "Height",
+  "crashStratosphere": "Stratosphere",
+  "crashCoins": "Coins",
+  "crashTotal": "TOTAL",
+  "crashHighscore": "Highscore",
+  "crashTotalCoins": "Total Coins",
+  "crashRetry": "RETRY",
+  "crashShop": "SHOP",
+  "crashBonusWatchAd": "BONUS (Watch ad)",
+  "crashWatchForCoins": "Watch for +100 Coins",
+  "crashWatchForShield": "Watch for +1 Shield",
+  "crashAdLoading": "Loading ad...",
+
+  "powerupFuel": "+Fuel!",
+  "powerupMagnet": "+Magnet!",
+  "powerupShield": "+Shield!",
+
+  "milestone500m": "500m reached! 🎯",
+  "milestone1km": "1,000m reached! 🚀",
+  "milestoneUpperAtmo": "Upper Atmosphere! ☁️",
+  "milestoneStrato": "Stratosphere! ⭐",
+  "milestoneSpace": "Space! 🌌",
+  "milestoneDeepSpace": "Deep Space! 🪐",
+  "milestoneNewRecord": "New Record!",
+
+  "streakDailyBonus": "DAILY BONUS",
+  "streakDay": "DAY {day}",
+  "@streakDay": {
+    "placeholders": {
+      "day": { "type": "int" }
+    }
+  },
+  "streakDay7": "DAY 7!",
+  "streakKeepItUp": "Keep it up!",
+  "streakTomorrow": "Tomorrow: +{coins} Coins",
+  "@streakTomorrow": {
+    "placeholders": {
+      "coins": { "type": "int" }
+    }
+  },
+  "streakContinues": "Streak continues! Day 1 next time.",
+  "streakClaim": "CLAIM!",
+  "streakRandomUpgrade": "+ Random Upgrade Level 1! 🎁",
+
+  "securityRootWarningTitle": "Modified device detected",
+  "securityRootWarningBody": "This device appears to be modified. The game might not work correctly.",
+  "securityRootWarningOk": "OK",
+
+  "touchToStart": "Touch screen to start",
+  "notEnoughCoinsSnackbar": "Not enough Coins! Need: {cost}",
+  "@notEnoughCoinsSnackbar": {
+    "placeholders": {
+      "cost": { "type": "int" }
+    }
+  }
+}

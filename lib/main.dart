@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:rocket_app/l10n/l10n.dart';
 import 'package:rocket_app/ui/main_menu_screen.dart';
 import 'package:rocket_app/ui/theme.dart';
 import 'package:rocket_app/services/ad_service.dart';
@@ -52,6 +53,22 @@ class RocketApp extends StatelessWidget {
       title: 'Rocket Rise',
       debugShowCheckedModeBanner: false,
       theme: RocketTheme.materialTheme,
+
+      // i18n: Lokalisierungs-Delegates (Flutter + Cupertino + Widget + App)
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+
+      // Unterstützte Sprachen: Deutsch primär, Englisch als Fallback
+      supportedLocales: AppLocalizations.supportedLocales,
+
+      // Fallback: Englisch wenn Gerätesprache nicht unterstützt
+      localeResolutionCallback: (locale, supportedLocales) {
+        for (final supported in supportedLocales) {
+          if (locale?.languageCode == supported.languageCode) return supported;
+        }
+        // Fallback → Englisch
+        return const Locale('en');
+      },
+
       // Direkt ins animierte Hauptmenü
       home: MainMenuScreen(showRootWarning: showRootWarning),
     );

@@ -1,6 +1,7 @@
 import 'package:flame/game.dart';
 import 'package:flutter/material.dart';
 import 'package:rocket_app/game/rocket_game.dart';
+import 'package:rocket_app/l10n/l10n.dart';
 import 'package:rocket_app/managers/milestone_manager.dart';
 import 'package:rocket_app/managers/score_manager.dart';
 import 'package:rocket_app/managers/streak_manager.dart';
@@ -213,15 +214,15 @@ class _ReadyOverlayState extends State<_ReadyOverlay>
                   width: 1.2,
                 ),
               ),
-              child: const Row(
+              child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.touch_app, color: Colors.white, size: 20),
-                  SizedBox(width: 8),
+                  const Icon(Icons.touch_app, color: Colors.white, size: 20),
+                  const SizedBox(width: 8),
                   Flexible(
                     child: Text(
-                      'Bildschirm berühren zum Starten',
-                      style: TextStyle(
+                      context.l10n.touchToStart,
+                      style: const TextStyle(
                         color: Colors.white,
                         fontSize: 14,
                         fontWeight: FontWeight.w600,

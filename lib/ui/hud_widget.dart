@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:rocket_app/game/atmosphere_zone.dart';
 import 'package:rocket_app/game/rocket_game.dart';
+import 'package:rocket_app/l10n/l10n.dart';
 import 'package:rocket_app/managers/score_manager.dart';
 import 'package:rocket_app/services/ad_service.dart';
 
@@ -38,28 +39,28 @@ class HudWidget extends StatelessWidget {
               children: [
                 _ZoneChip(zone: zone),
                 const SizedBox(height: 8),
-                _HudLabel(icon: Icons.star, label: 'Score',
+                _HudLabel(icon: Icons.star, label: context.l10n.hudScore,
                     value: game.score.toString(), color: Colors.amber),
                 const SizedBox(height: 5),
                 // "Best" pulsiert golden wenn Rekord gerade gebrochen wird
                 if (game.isNewHighscoreDuringFlight)
                   _PulsingHudLabel(
                     icon: Icons.emoji_events,
-                    label: 'REKORD',
+                    label: context.l10n.hudBest,
                     value: game.score.toString(),
                   )
                 else
-                  _HudLabel(icon: Icons.emoji_events, label: 'Best',
+                  _HudLabel(icon: Icons.emoji_events, label: context.l10n.hudBest,
                     value: game.highscore.toString(), color: Colors.orangeAccent),
                 const SizedBox(height: 5),
                 _HudLabel(
                   icon: Icons.height,
-                  label: 'Höhe',
+                  label: context.l10n.hudHeight,
                   value: '${game.altitudeM.toStringAsFixed(0)} m',
                   color: Colors.lightBlueAccent,
                 ),
                 const SizedBox(height: 5),
-                _HudLabel(icon: Icons.monetization_on, label: 'Coins',
+                _HudLabel(icon: Icons.monetization_on, label: context.l10n.hudCoins,
                     value: game.coinsThisRun.toString(), color: Colors.yellowAccent),
                 if (inStrato) ...[
                   const SizedBox(height: 8),
@@ -142,25 +143,37 @@ class _ZoneChip extends StatelessWidget {
   final AtmosphereZone zone;
   const _ZoneChip({required this.zone});
 
-  Color get _color => switch (zone.name) {
+  Color _colorForZone(AtmosphereZone z) => switch (z.name) {
     'Troposphäre' => Colors.lightBlue,
     'Obere Atmosphäre' => Colors.indigo,
     'Stratosphäre' => Colors.deepPurple,
     _ => Colors.blueGrey,
   };
 
+  String _localizedName(BuildContext context, AtmosphereZone z) {
+    final l10n = context.l10n;
+    return switch (z.name) {
+      'Troposphäre'       => l10n.zoneTroposphere,
+      'Obere Atmosphäre'  => l10n.zoneUpperAtmosphere,
+      'Stratosphäre'      => l10n.zoneStratosphere,
+      'Weltraum'          => l10n.zoneSpace,
+      _                   => z.name.toUpperCase(),
+    };
+  }
+
   @override
   Widget build(BuildContext context) {
+    final Color c = _colorForZone(zone);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
-        color: _color.withValues(alpha: 0.2),
+        color: c.withValues(alpha: 0.2),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: _color.withValues(alpha: 0.6)),
+        border: Border.all(color: c.withValues(alpha: 0.6)),
       ),
       child: Text(
-        zone.name.toUpperCase(),
-        style: TextStyle(color: _color, fontSize: 10,
+        _localizedName(context, zone),
+        style: TextStyle(color: c, fontSize: 10,
             fontWeight: FontWeight.bold, letterSpacing: 2),
       ),
     );
@@ -500,14 +513,14 @@ class StartOverlayWidget extends StatelessWidget {
                   fontWeight: FontWeight.bold, letterSpacing: 8)),
           const SizedBox(height: 6),
           if (game.highscore > 0)
-            Text('Highscore: ${game.highscore}',
+            Text('${context.l10n.crashHighscore}: ${game.highscore}',
                 style: const TextStyle(color: Colors.amber, fontSize: 18)),
           if (game.totalCoins > 0) ...[
             const SizedBox(height: 4),
             Row(mainAxisSize: MainAxisSize.min, children: [
               const Icon(Icons.monetization_on, color: Colors.yellowAccent, size: 18),
               const SizedBox(width: 4),
-              Text('${game.totalCoins} Coins',
+              Text('${game.totalCoins} ${context.l10n.hudCoins}',
                   style: const TextStyle(color: Colors.yellowAccent, fontSize: 16)),
             ]),
           ],
@@ -529,8 +542,8 @@ class StartOverlayWidget extends StatelessWidget {
               ElevatedButton.icon(
                 onPressed: onShop,
                 icon: const Icon(Icons.store, size: 20),
-                label: const Text('SHOP',
-                    style: TextStyle(fontSize: 15, letterSpacing: 2)),
+                label: Text(context.l10n.crashShop,
+                    style: const TextStyle(fontSize: 15, letterSpacing: 2)),
                 style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF1A1A3E),
                     foregroundColor: Colors.yellowAccent,
@@ -628,24 +641,24 @@ class _CrashOverlayWidgetState extends State<CrashOverlayWidget> {
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
-              widget.game.isNewHighscore ? '🏆 NEUER REKORD!' : '💥 ABSTURZ',
+              widget.game.isNewHighscore ? '🏆 ${context.l10n.crashNewRecord}' : '💥 ${context.l10n.crashTitle}',
               style: TextStyle(
                 color: widget.game.isNewHighscore ? Colors.amber : Colors.red,
                 fontSize: 26, fontWeight: FontWeight.bold, letterSpacing: 3,
               ),
             ),
             const SizedBox(height: 18),
-            _ScoreRow(label: 'Höhe',
+            _ScoreRow(label: context.l10n.crashHeight,
                 value: '${sm.altitudeScore} Pkt',
                 sub: '${sm.maxAltitudeMeters} m × 1',
                 icon: Icons.height, color: Colors.lightBlueAccent),
             const SizedBox(height: 6),
-            _ScoreRow(label: 'Stratosphäre',
+            _ScoreRow(label: context.l10n.crashStratosphere,
                 value: '${sm.stratosphereBonus} Pkt',
                 sub: '${sm.stratosphereSeconds.toStringAsFixed(1)} s × 10',
                 icon: Icons.rocket_launch, color: Colors.purpleAccent),
             const SizedBox(height: 6),
-            _ScoreRow(label: 'Coins',
+            _ScoreRow(label: context.l10n.crashCoins,
                 value: '${sm.coinBonus} Pkt',
                 sub: '${sm.coinsThisRun} × 5',
                 icon: Icons.monetization_on, color: Colors.yellowAccent),
@@ -656,8 +669,8 @@ class _CrashOverlayWidgetState extends State<CrashOverlayWidget> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text('GESAMT',
-                    style: TextStyle(color: Colors.white, fontSize: 17,
+                Text(context.l10n.crashTotal,
+                    style: const TextStyle(color: Colors.white, fontSize: 17,
                         fontWeight: FontWeight.bold, letterSpacing: 2)),
                 Text('${sm.totalScore}',
                     style: const TextStyle(color: Colors.amber,
@@ -668,8 +681,8 @@ class _CrashOverlayWidgetState extends State<CrashOverlayWidget> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text('Highscore',
-                    style: TextStyle(color: Colors.white38, fontSize: 13)),
+                Text(context.l10n.crashHighscore,
+                    style: const TextStyle(color: Colors.white38, fontSize: 13)),
                 Text('${widget.game.highscore}',
                     style: const TextStyle(color: Colors.orangeAccent, fontSize: 14)),
               ],
@@ -678,11 +691,11 @@ class _CrashOverlayWidgetState extends State<CrashOverlayWidget> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Row(children: [
-                  Icon(Icons.monetization_on, color: Colors.yellowAccent, size: 14),
-                  SizedBox(width: 4),
-                  Text('Gesamt Coins',
-                      style: TextStyle(color: Colors.white38, fontSize: 13)),
+                Row(children: [
+                  const Icon(Icons.monetization_on, color: Colors.yellowAccent, size: 14),
+                  const SizedBox(width: 4),
+                  Text(context.l10n.crashTotalCoins,
+                      style: const TextStyle(color: Colors.white38, fontSize: 13)),
                 ]),
                 Text('${widget.game.totalCoins}',
                     style: const TextStyle(color: Colors.yellowAccent,
@@ -702,15 +715,15 @@ class _CrashOverlayWidgetState extends State<CrashOverlayWidget> {
                       foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(
                           horizontal: 24, vertical: 12)),
-                  child: const Text('NOCHMAL',
-                      style: TextStyle(fontSize: 15, letterSpacing: 2)),
+                  child: Text(context.l10n.crashRetry,
+                      style: const TextStyle(fontSize: 15, letterSpacing: 2)),
                 ),
                 const SizedBox(width: 14),
                 ElevatedButton.icon(
                   onPressed: widget.onShop,
                   icon: const Icon(Icons.store, size: 18),
-                  label: const Text('SHOP',
-                      style: TextStyle(fontSize: 14, letterSpacing: 2)),
+                  label: Text(context.l10n.crashShop,
+                      style: const TextStyle(fontSize: 14, letterSpacing: 2)),
                   style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF1A1A3E),
                       foregroundColor: Colors.yellowAccent,
@@ -726,9 +739,9 @@ class _CrashOverlayWidgetState extends State<CrashOverlayWidget> {
               const SizedBox(height: 12),
               const Divider(color: Colors.white12),
               const SizedBox(height: 4),
-              const Text(
-                'BONUS (Werbung anschauen)',
-                style: TextStyle(
+              Text(
+                context.l10n.crashBonusWatchAd,
+                style: const TextStyle(
                   color: Colors.white38,
                   fontSize: 11,
                   letterSpacing: 1.5,
@@ -742,14 +755,14 @@ class _CrashOverlayWidgetState extends State<CrashOverlayWidget> {
                 children: [
                   // +100 Coins Button (volle Breite)
                   _AdRewardButton(
-                    label: '+100 Coins anschauen',
+                    label: context.l10n.crashWatchForCoins,
                     icon: '🎬',
                     onPressed: _adInProgress ? null : _watchAdForCoins,
                   ),
                   const SizedBox(height: 8),
                   // +1 Schild Button (volle Breite)
                   _AdRewardButton(
-                    label: '+1 Schild anschauen',
+                    label: context.l10n.crashWatchForShield,
                     icon: '🎬',
                     onPressed: _adInProgress ? null : _watchAdForShield,
                   ),
@@ -760,19 +773,19 @@ class _CrashOverlayWidgetState extends State<CrashOverlayWidget> {
             // Ladeindikator waehrend Ad laeuft
             if (_adInProgress) ...[
               const SizedBox(height: 14),
-              const Row(
+              Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  SizedBox(
+                  const SizedBox(
                     width: 16, height: 16,
                     child: CircularProgressIndicator(
                       strokeWidth: 2,
                       color: Colors.white54,
                     ),
                   ),
-                  SizedBox(width: 8),
-                  Text('Werbung wird geladen...',
-                      style: TextStyle(color: Colors.white38, fontSize: 12)),
+                  const SizedBox(width: 8),
+                  Text(context.l10n.crashAdLoading,
+                      style: const TextStyle(color: Colors.white38, fontSize: 12)),
                 ],
               ),
             ],

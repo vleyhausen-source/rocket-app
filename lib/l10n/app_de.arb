@@ -1,0 +1,124 @@
+{
+  "@@locale": "de",
+
+  "appTitle": "Rocket Rise",
+
+  "menuPlay": "SPIELEN",
+  "menuUpgradeShop": "UPGRADE-SHOP",
+  "menuRecord": "REKORD",
+  "menuDay": "TAG",
+
+  "hudScore": "Score",
+  "hudBest": "Best",
+  "hudHeight": "Höhe",
+  "hudCoins": "Coins",
+  "hudFuel": "Kraftstoff",
+
+  "zoneTroposphere": "TROPOSPHÄRE",
+  "zoneUpperAtmosphere": "OBERE ATMOSPHÄRE",
+  "zoneStratosphere": "STRATOSPHÄRE",
+  "zoneSpace": "WELTRAUM",
+
+  "shopTitle": "UPGRADE-SHOP",
+  "shopNotEnoughCoins": "Nicht genug Coins! Benötigt: {cost}",
+  "@shopNotEnoughCoins": {
+    "placeholders": {
+      "cost": { "type": "int" }
+    }
+  },
+  "shopPurchaseSuccess": "{name} gekauft!",
+  "@shopPurchaseSuccess": {
+    "placeholders": {
+      "name": { "type": "String" }
+    }
+  },
+
+  "upgCatEngine": "Triebwerk",
+  "upgCatTank": "Tank",
+  "upgCatHull": "Hülle",
+  "upgCatControl": "Steuerung",
+  "upgCatSpecial": "Spezial",
+
+  "upgThrustBoost": "Schubverstärker",
+  "upgThrustBoostDesc": "Erhöht den maximalen Schub der Triebwerke.",
+  "upgFuelEfficiency": "Kraftstoffeffizienz",
+  "upgFuelEfficiencyDesc": "Reduziert den Kraftstoffverbrauch.",
+  "upgTankCapacity": "Tankkapazität",
+  "upgTankCapacityDesc": "Vergrößert den Kraftstofftank.",
+  "upgRefuelSpeed": "Schnelltanken",
+  "upgRefuelSpeedDesc": "Startet jede Runde mit extra Kraftstoff.",
+  "upgHullArmor": "Panzerung",
+  "upgHullArmorDesc": "Überlebt einen Randaufprall ohne Absturz.",
+  "upgAerodynamics": "Aerodynamik",
+  "upgAerodynamicsDesc": "Reduziert Luftwiderstand, höhere Maximalgeschwindigkeit.",
+  "upgLateralControl": "Lagekontrolle",
+  "upgLateralControlDesc": "Verbesserte Links/Rechts-Steuerung.",
+  "upgStabilizer": "Stabilisator",
+  "upgStabilizerDesc": "Rakete kehrt schneller in aufrechte Position zurück.",
+  "upgCoinMagnet": "Coin-Magnet",
+  "upgCoinMagnetDesc": "Zieht Coins in einem Radius automatisch an.",
+  "upgBooster": "Booster",
+  "upgBoosterDesc": "Einmaliger Schubstoß pro Flug (doppelter Schub für 3s).",
+  "upgShield": "Schutzschild",
+  "upgShieldDesc": "Überlebt den ersten Absturz pro Flug ohne Game-Over.",
+  "upgAutopilot": "Autopilot",
+  "upgAutopilotDesc": "Hält die Rakete kurzzeitig automatisch stabil.",
+
+  "crashTitle": "ABSTURZ",
+  "crashNewRecord": "NEUER REKORD!",
+  "crashHeight": "Höhe",
+  "crashStratosphere": "Stratosphäre",
+  "crashCoins": "Coins",
+  "crashTotal": "GESAMT",
+  "crashHighscore": "Highscore",
+  "crashTotalCoins": "Gesamt Coins",
+  "crashRetry": "NOCHMAL",
+  "crashShop": "SHOP",
+  "crashBonusWatchAd": "BONUS (Werbung anschauen)",
+  "crashWatchForCoins": "+100 Coins anschauen",
+  "crashWatchForShield": "+1 Schild anschauen",
+  "crashAdLoading": "Werbung wird geladen...",
+
+  "powerupFuel": "+Fuel!",
+  "powerupMagnet": "+Magnet!",
+  "powerupShield": "+Schild!",
+
+  "milestone500m": "500m erreicht! 🎯",
+  "milestone1km": "1km erreicht! 🚀",
+  "milestoneUpperAtmo": "Obere Atmosphäre! ☁️",
+  "milestoneStrato": "Stratosphäre! ⭐",
+  "milestoneSpace": "Weltraum! 🌌",
+  "milestoneDeepSpace": "Tief im All! 🪐",
+  "milestoneNewRecord": "Neuer Rekord!",
+
+  "streakDailyBonus": "TAGES-BONUS",
+  "streakDay": "TAG {day}",
+  "@streakDay": {
+    "placeholders": {
+      "day": { "type": "int" }
+    }
+  },
+  "streakDay7": "TAG 7!",
+  "streakKeepItUp": "Weiter so!",
+  "streakTomorrow": "Morgen: +{coins} Coins",
+  "@streakTomorrow": {
+    "placeholders": {
+      "coins": { "type": "int" }
+    }
+  },
+  "streakContinues": "Streak läuft weiter! Tag 1 nächstes Mal.",
+  "streakClaim": "EINSAMMELN!",
+  "streakRandomUpgrade": "+ Zufälliges Upgrade Stufe 1! 🎁",
+
+  "securityRootWarningTitle": "Gerät modifiziert",
+  "securityRootWarningBody": "Dieses Gerät scheint modifiziert zu sein. Das Spiel könnte nicht korrekt funktionieren.",
+  "securityRootWarningOk": "Verstanden",
+
+  "touchToStart": "Bildschirm berühren zum Starten",
+  "notEnoughCoinsSnackbar": "Nicht genug Coins! Benötigt: {cost}",
+  "@notEnoughCoinsSnackbar": {
+    "placeholders": {
+      "cost": { "type": "int" }
+    }
+  }
+}
