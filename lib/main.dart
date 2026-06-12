@@ -22,24 +22,63 @@ void main() async {
     SystemUiMode.immersiveSticky,
   );
 
+  // Gesamter Startup-Flow mit Timeout abgesichert.
+  // Hintergrund: Auf Xiaomi HyperOS / MIUI können Google-Dienste (UMP, AdMob)
+  // beim ersten Start hängen und nie einen Callback liefern. Ohne diesen Guard
+  // würde runApp() nie aufgerufen → dauerhaft schwarzer Bildschirm.
+  // Bei Timeout: App startet trotzdem, Ads sind deaktiviert (NPA-Modus).
+  bool showRootWarning = false;
+
+  try {
+    await _initializeApp().timeout(
+      const Duration(seconds: 12),
+      onTimeout: () {
+        debugPrint(
+          '[main] Startup-Timeout nach 12s – App startet ohne Consent/AdMob. '
+          'Wahrscheinlich: Gerät blockiert Google-Dienste (Xiaomi HyperOS / MIUI).',
+        );
+      },
+    );
+  } catch (e) {
+    // Defensiver Catch-All: Kein Startup-Fehler darf runApp() verhindern.
+    debugPrint('[main] Startup-Fehler abgefangen: $e');
+  }
+
+  try {
+    final secResult = await SecurityService.instance
+        .checkDevice()
+        .timeout(const Duration(seconds: 3), onTimeout: () {
+      debugPrint('[main] SecurityCheck Timeout – wird übersprungen');
+      return const SecurityCheckResult(
+        isRooted: false,
+        isDeveloperMode: false,
+        checkFailed: true,
+      );
+    });
+    showRootWarning = secResult.isRooted;
+  } catch (e) {
+    debugPrint('[main] SecurityCheck Fehler: $e');
+  }
+
+  runApp(
+    ProviderScope(
+      child: RocketApp(showRootWarning: showRootWarning),
+    ),
+  );
+}
+
+/// Initialisiert Consent und AdMob – separat aus main() für Timeout-Wrapping.
+Future<void> _initializeApp() async {
   // DSGVO: Einwilligung einholen BEVOR AdMob initialisiert wird.
   // UMP SDK zeigt EU-Nutzern automatisch den Consent-Dialog.
   // Bei Ablehnung: isNonPersonalized=true → AdService nutzt NPA-Ads.
+  // ConsentService hat intern einen 8s-Timeout auf den UMP-Callback.
   await ConsentService.instance.requestConsentInfoUpdate();
 
   // AdMob SDK erst nach Consent initialisieren (im Hintergrund)
   if (ConsentService.instance.canRequestAds) {
     AdService.instance.initialize().ignore();
   }
-
-  // Root Detection – Ergebnis fuer späteren Dialog speichern
-  final secResult = await SecurityService.instance.checkDevice();
-
-  runApp(
-    ProviderScope(
-      child: RocketApp(showRootWarning: secResult.isRooted),
-    ),
-  );
 }
 
 class RocketApp extends StatelessWidget {

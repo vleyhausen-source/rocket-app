@@ -180,12 +180,15 @@ class SecurityService {
   /// Prueft Android Build-Tags auf 'test-keys' (deutet auf Custom ROM hin).
   ///
   /// Nutzt MethodChannel da dart:io keinen Build-Prop-Zugriff hat.
+  /// Timeout: 2s – auf Xiaomi HyperOS kann der MethodChannel hängen wenn
+  /// der Platform-Channel nicht native implementiert ist.
   Future<bool> _checkBuildTags() async {
     try {
       const MethodChannel channel =
           MethodChannel('com.vleyhausen.rocket_app/security');
-      final String? buildTags =
-          await channel.invokeMethod<String>('getBuildTags');
+      final String? buildTags = await channel
+          .invokeMethod<String>('getBuildTags')
+          .timeout(const Duration(seconds: 2), onTimeout: () => null);
       if (buildTags != null && buildTags.contains('test-keys')) {
         return true;
       }

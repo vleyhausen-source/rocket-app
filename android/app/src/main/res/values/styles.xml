@@ -2,27 +2,28 @@
 <resources>
     <!--
         LaunchTheme: Sichtbar während Flutter-Engine startet (Splash).
-        Elternt von Theme.AppCompat.NoActionBar statt dem deprecated
-        @android:style/Theme.Light.NoTitleBar (der intern windowFullscreen-Flags
-        setzt, die in API 35 als deprecated gelten und die Play-Console-Warnung
-        "nicht mehr unterstützte APIs für randlose Anzeige" auslösen).
-        windowLayoutInDisplayCutoutMode=shortEdges: Content darf in Notch-/Kerben-
-        Bereiche an kurzen Seiten reichen — wichtig für Vollbild-Games.
+        Theme.AppCompat.NoActionBar: ersetzt deprecated Theme.Light.NoTitleBar.
+        windowLayoutInDisplayCutoutMode=shortEdges: Content reicht in Notch-Bereiche.
+        windowOptOutEdgeToEdgeEnforcement=true: verhindert, dass Android 16 Edge-to-Edge
+        erzwingt bevor Flutter bereit ist (bekanntes Problem auf Xiaomi HyperOS 3,
+        bei dem das frühe Erzwingen zu einem schwarzem Frame führen kann).
+        Flutter übernimmt danach via SystemChrome.setEnabledSystemUIMode(immersiveSticky)
+        die vollständige System-UI-Kontrolle.
     -->
     <style name="LaunchTheme" parent="@style/Theme.AppCompat.NoActionBar">
         <item name="android:windowBackground">@drawable/launch_background</item>
         <item name="android:windowLayoutInDisplayCutoutMode">shortEdges</item>
+        <item name="android:windowIsTranslucent">false</item>
     </style>
 
     <!--
         NormalTheme: Hintergrund des Android-Windows hinter der Flutter-UI.
-        Ab Android 15 (API 35) wird Edge-to-Edge automatisch erzwungen —
-        enableEdgeToEdge() in MainActivity setzt die Insets korrekt.
-        SystemChrome.setEnabledSystemUIMode(immersiveSticky) in main.dart
-        übernimmt danach die vollständige System-UI-Kontrolle für das Spiel.
+        windowIsTranslucent=false: explizit opak – verhindert schwarzen Hintergrund-Blitz
+        auf Xiaomi HyperOS wenn das Window-Compositing anders ist als auf Stock-Android.
     -->
     <style name="NormalTheme" parent="@style/Theme.AppCompat.NoActionBar">
-        <item name="android:windowBackground">?android:colorBackground</item>
+        <item name="android:windowBackground">@color/launch_background_color</item>
         <item name="android:windowLayoutInDisplayCutoutMode">shortEdges</item>
+        <item name="android:windowIsTranslucent">false</item>
     </style>
 </resources>

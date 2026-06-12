@@ -35,6 +35,9 @@ class _ConsentPrefs {
 /// 13 Monate in Millisekunden (IAB TCF / DSGVO-Empfehlung)
 const int _kConsentValidityMs = 13 * 30 * 24 * 60 * 60 * 1000;
 
+/// Timeout fuer UMP-SDK-Callbacks (Schutz gegen hängende Geräte wie Xiaomi HyperOS)
+const Duration _kUmpTimeout = Duration(seconds: 8);
+
 /// Service fuer DSGVO-konforme Einwilligungsverwaltung via UMP SDK.
 ///
 /// Muss einmal beim App-Start mit [requestConsentInfoUpdate] aufgerufen werden,
@@ -101,6 +104,11 @@ class ConsentService {
   // ============================================================
 
   /// Interner UMP-Flow: requestConsentInfoUpdate → ggf. Form laden/zeigen
+  ///
+  /// WICHTIG: $_kUmpTimeout Timeout – auf manchen Geräten (z.B. Xiaomi HyperOS 3,
+  /// MIUI mit eingeschränkten Google Play Services) feuert das UMP-SDK weder
+  /// Erfolgs- noch Fehler-Callback. Ohne Timeout würde main() → runApp() nie
+  /// aufgerufen und die App bliebe dauerhaft mit schwarzem Bildschirm hängen.
   Future<void> _requestUmpUpdate() async {
     final Completer<void> completer = Completer<void>();
     final ConsentRequestParameters params = ConsentRequestParameters();
@@ -152,7 +160,20 @@ class ConsentService {
       },
     );
 
-    await completer.future;
+    // Timeout: _kUmpTimeout. Schützt vor hängendem UMP-SDK auf Geräten, auf denen
+    // weder Erfolgs- noch Fehler-Callback feuert (bekanntes Problem bei Xiaomi
+    // HyperOS / MIUI wenn Google Play Services eingeschränkt sind).
+    await completer.future.timeout(
+      _kUmpTimeout,
+      onTimeout: () {
+        debugPrint(
+          '[ConsentService] UMP Timeout nach ${_kUmpTimeout.inSeconds}s – '
+          'Fallback NPA (Gerät blockiert UMP-Callbacks)',
+        );
+        _canRequestAds = true;
+        _isNonPersonalized = true;
+      },
+    );
   }
 
   /// Laedt Consent-Form und zeigt sie via loadAndShowConsentFormIfRequired.
