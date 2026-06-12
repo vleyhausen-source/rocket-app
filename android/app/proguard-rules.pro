@@ -46,9 +46,30 @@
 # --- SharedPreferences ---
 # Keine speziellen Regeln noetig (Android-Systemdienst)
 
-# --- Root Detection (flutter_jailbreak_detection) ---
--keep class com.Changenode.flutter_jailbreak_detection.** { *; }
--dontwarn com.Changenode.flutter_jailbreak_detection.**
+# --- Root Detection ---
+# flutter_jailbreak_detection wurde entfernt (AGP 9.x inkompatibel).
+# Root-Detection erfolgt nativ via dart:io in security_service.dart – keine ProGuard-Regeln noetig.
+
+# --- androidx.work (WorkManager) ---
+# Wird transitiv durch play-services-ads gezogen. R8 darf WorkerFactory und
+# Configuration.Provider NICHT umbenennen, sonst crasht die WorkDatabase-Initialisierung.
+-keep class androidx.work.** { *; }
+-keep interface androidx.work.** { *; }
+-dontwarn androidx.work.**
+
+# --- androidx.startup (App Startup Library) ---
+# InitializationProvider wird via Manifest-Merger eingebaut; R8 darf den Eintrag nicht entfernen.
+-keep class androidx.startup.** { *; }
+-keep interface androidx.startup.** { *; }
+-dontwarn androidx.startup.**
+
+# --- androidx.room (Room Database) ---
+# Wird von work-runtime benoetigt (WorkDatabase). R8 darf Room-Entities und DAOs nicht strippten.
+-keep class androidx.room.** { *; }
+-keep interface androidx.room.** { *; }
+-dontwarn androidx.room.**
+-keepclassmembers @androidx.room.Entity class * { *; }
+-keepclassmembers @androidx.room.Dao interface * { *; }
 
 # --- Allgemeine Sicherheitsregeln ---
 # Stack-Traces lesbar halten fuer Crashlytics (spaeter)

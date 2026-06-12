@@ -78,3 +78,13 @@ kotlin {
 flutter {
     source = "../.."
 }
+
+// Erzwingt eine einheitliche androidx.work Version um den WorkDatabase-Crash zu beheben.
+// Ursache: play-services-ads (via google_mobile_ads) zieht work-runtime:2.7.0 rein,
+// was mit neueren fragment/startup Versionen inkompatibel ist und beim App-Start crasht.
+configurations.all {
+    resolutionStrategy {
+        force("androidx.work:work-runtime:2.9.1")
+        force("androidx.work:work-runtime-ktx:2.9.1")
+    }
+}
