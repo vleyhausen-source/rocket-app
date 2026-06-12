@@ -70,72 +70,81 @@ class _MilestoneBannerState extends State<MilestoneBanner>
 
   @override
   Widget build(BuildContext context) {
+    // top:0 statt padding.top+12 — damit liegt das Widget am absoluten Screen-Rand.
+    // SlideTransition(Offset(0,-1.5)) schiebt es vollständig ins Negative,
+    // der Stack clippt bei y=0 → kein versehentliches Durchscheinen mehr.
     return Positioned(
-      top: MediaQuery.of(context).padding.top + 12,
+      top: 0,
       left: 0,
       right: 0,
       child: SlideTransition(
         position: _slide,
         child: FadeTransition(
           opacity: _fade,
-          child: Center(
-            child: Container(
-              margin: const EdgeInsets.symmetric(horizontal: 24),
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [Color(0xFF1A0040), Color(0xFF2D006E)],
+          child: SafeArea(
+            bottom: false,
+            child: Padding(
+              padding: const EdgeInsets.only(top: 12),
+              child: Center(
+                child: Container(
+                  margin: const EdgeInsets.symmetric(horizontal: 24),
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFF1A0040), Color(0xFF2D006E)],
+                    ),
+                    borderRadius: BorderRadius.circular(32),
+                    border: Border.all(
+                      color: RocketTheme.primaryPurple.withValues(alpha: 0.8),
+                      width: 1.5,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: RocketTheme.primaryPurple.withValues(alpha: 0.4),
+                        blurRadius: 20,
+                        spreadRadius: 2,
+                      ),
+                    ],
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.emoji_events, color: Color(0xFFFFD600), size: 22),
+                      const SizedBox(width: 10),
+                      Flexible(
+                        child: Text(
+                          widget.milestone.localizedLabel(context),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 15,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 0.5,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFFD600).withValues(alpha: 0.2),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: const Color(0xFFFFD600).withValues(alpha: 0.6),
+                          ),
+                        ),
+                        child: Text(
+                          '+${widget.milestone.coinBonus} 🪙',
+                          style: const TextStyle(
+                            color: Color(0xFFFFD600),
+                            fontSize: 13,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-                borderRadius: BorderRadius.circular(32),
-                border: Border.all(
-                  color: RocketTheme.primaryPurple.withValues(alpha: 0.8),
-                  width: 1.5,
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: RocketTheme.primaryPurple.withValues(alpha: 0.4),
-                    blurRadius: 20,
-                    spreadRadius: 2,
-                  ),
-                ],
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(Icons.emoji_events, color: Color(0xFFFFD600), size: 22),
-                  const SizedBox(width: 10),
-                  Flexible(
-                    child: Text(
-                      widget.milestone.localizedLabel(context),
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 15,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 0.5,
-                      ),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFFFD600).withValues(alpha: 0.2),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: const Color(0xFFFFD600).withValues(alpha: 0.6),
-                      ),
-                    ),
-                    child: Text(
-                      '+${widget.milestone.coinBonus} 🪙',
-                      style: const TextStyle(
-                        color: Color(0xFFFFD600),
-                        fontSize: 13,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                ],
               ),
             ),
           ),
@@ -206,48 +215,56 @@ class _NewRecordBannerState extends State<NewRecordBanner>
 
   @override
   Widget build(BuildContext context) {
+    // top:0 statt padding.top+12 — gleiche Logik wie MilestoneBanner:
+    // Widget startet am absoluten Screen-Rand, SafeArea+Padding ersetzen den alten Offset.
     return Positioned(
-      top: MediaQuery.of(context).padding.top + 12,
+      top: 0,
       left: 0,
       right: 0,
       child: SlideTransition(
         position: _slide,
         child: FadeTransition(
           opacity: _fade,
-          child: Center(
-            child: Container(
-              margin: const EdgeInsets.symmetric(horizontal: 24),
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [Color(0xFFB8860B), Color(0xFFFFD600)],
-                ),
-                borderRadius: BorderRadius.circular(32),
-                boxShadow: [
-                  BoxShadow(
-                    color: const Color(0xFFFFD600).withValues(alpha: 0.5),
-                    blurRadius: 24,
-                    spreadRadius: 3,
-                  ),
-                ],
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(Icons.star, color: Colors.black87, size: 20),
-                  const SizedBox(width: 8),
-                  Text(
-                    '🏆 ${context.l10n.milestoneNewRecord}',
-                    style: const TextStyle(
-                      color: Colors.black87,
-                      fontWeight: FontWeight.w900,
-                      fontSize: 15,
-                      letterSpacing: 2,
+          child: SafeArea(
+            bottom: false,
+            child: Padding(
+              padding: const EdgeInsets.only(top: 12),
+              child: Center(
+                child: Container(
+                  margin: const EdgeInsets.symmetric(horizontal: 24),
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFFB8860B), Color(0xFFFFD600)],
                     ),
+                    borderRadius: BorderRadius.circular(32),
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFFFFD600).withValues(alpha: 0.5),
+                        blurRadius: 24,
+                        spreadRadius: 3,
+                      ),
+                    ],
                   ),
-                  const SizedBox(width: 8),
-                  const Icon(Icons.star, color: Colors.black87, size: 20),
-                ],
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.star, color: Colors.black87, size: 20),
+                      const SizedBox(width: 8),
+                      Text(
+                        '🏆 ${context.l10n.milestoneNewRecord}',
+                        style: const TextStyle(
+                          color: Colors.black87,
+                          fontWeight: FontWeight.w900,
+                          fontSize: 15,
+                          letterSpacing: 2,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      const Icon(Icons.star, color: Colors.black87, size: 20),
+                    ],
+                  ),
+                ),
               ),
             ),
           ),
