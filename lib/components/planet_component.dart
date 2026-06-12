@@ -2,7 +2,31 @@ import 'dart:math';
 import 'package:flame/components.dart';
 import 'package:flutter/material.dart';
 
-/// Dekorativer Planet im Weltraum-Hintergrund (Zone 4)
+// ---------------------------------------------------------------------------
+// Konstanten fuer Planeten-Parallax-Scrolling
+// ---------------------------------------------------------------------------
+
+/// Groessenbereich fuer kleine (weite) Planeten
+const double _kMinPlanetRadius = 15.0;
+const double _kMaxPlanetRadius = 55.0;
+
+/// Scroll-Geschwindigkeit: groessere Planeten bewegen sich schneller
+/// radius 15 -> ca. 8 px/s (weit), radius 55 -> ca. 22 px/s (nah)
+double _scrollSpeedForRadius(double r) {
+  // Lineare Interpolation: kMinRadius..kMaxRadius -> 8..22 px/s
+  const double speedMin = 8.0;
+  const double speedMax = 22.0;
+  final double t = ((r - _kMinPlanetRadius) / (_kMaxPlanetRadius - _kMinPlanetRadius))
+      .clamp(0.0, 1.0);
+  return speedMin + t * (speedMax - speedMin);
+}
+
+// ---------------------------------------------------------------------------
+// PlanetComponent -- einzelner dekorativer Planet
+// ---------------------------------------------------------------------------
+
+/// Dekorativer Planet im Weltraum-Hintergrund (Zone 4).
+/// Bewegt sich langsam von oben nach unten (Parallax-Effekt).
 class PlanetComponent extends PositionComponent {
   final Color _baseColor;
   final Color _ringColor;
@@ -16,9 +40,12 @@ class PlanetComponent extends PositionComponent {
   late final Paint _moonPaint;
   late final Paint _shadowPaint;
 
-  // Langsame Rotation für Planeten-Ring
+  // Langsame Rotation fuer Planeten-Ring
   double _rotation = 0.0;
   final double _rotationSpeed;
+
+  /// Scroll-Geschwindigkeit in px/s (abhaengig von Groesse)
+  final double scrollSpeed;
 
   PlanetComponent._({
     required Vector2 position,
@@ -28,6 +55,7 @@ class PlanetComponent extends PositionComponent {
     required bool hasRing,
     required bool hasMoon,
     required double rotationSpeed,
+    required this.scrollSpeed,
   })  : _baseColor = baseColor,
         _ringColor = ringColor,
         _hasRing = hasRing,
@@ -40,18 +68,20 @@ class PlanetComponent extends PositionComponent {
           anchor: Anchor.center,
         );
 
-  /// Erstellt einen zufälligen Planeten
+  /// Erstellt einen zufaelligen Planeten an einer angegebenen Y-Position.
+  /// [spawnAboveScreen]: wenn true, wird der Planet oberhalb des Bildschirms gespawnt.
   factory PlanetComponent.random({
     required Random rnd,
     required double screenWidth,
-    required double screenHeight,
+    double? spawnY,           // explizite Y-Position (fuer Recycling)
+    double screenHeight = 0,  // fuer initiales Random-Y benoetigt
   }) {
     const List<Color> planetColors = [
-      Color(0xFF8D6E63), // Braun (Erde-ähnlich)
-      Color(0xFFE57373), // Rot (Mars-ähnlich)
-      Color(0xFF81C784), // Grün
+      Color(0xFF8D6E63), // Braun (Erde-aehnlich)
+      Color(0xFFE57373), // Rot (Mars-aehnlich)
+      Color(0xFF81C784), // Gruen
       Color(0xFF64B5F6), // Blau
-      Color(0xFFFFB74D), // Orange (Jupiter-ähnlich)
+      Color(0xFFFFB74D), // Orange (Jupiter-aehnlich)
       Color(0xFFCE93D8), // Lila
     ];
     const List<Color> ringColors = [
@@ -62,12 +92,19 @@ class PlanetComponent extends PositionComponent {
 
     final Color base = planetColors[rnd.nextInt(planetColors.length)];
     final Color ring = ringColors[rnd.nextInt(ringColors.length)];
-    final double radius = rnd.nextDouble() * 35 + 20;
+    final double radius =
+        _kMinPlanetRadius + rnd.nextDouble() * (_kMaxPlanetRadius - _kMinPlanetRadius);
+
+    // Y-Position: entweder explizit (Recycling) oder zufaellig im Bildschirm (Init)
+    final double yPos = spawnY ??
+        (screenHeight > 0
+            ? rnd.nextDouble() * screenHeight
+            : -radius * 2 - rnd.nextDouble() * 200);
 
     return PlanetComponent._(
       position: Vector2(
         rnd.nextDouble() * screenWidth * 0.8 + screenWidth * 0.1,
-        rnd.nextDouble() * screenHeight * 0.6 + screenHeight * 0.05,
+        yPos,
       ),
       radius: radius,
       baseColor: base,
@@ -75,6 +112,7 @@ class PlanetComponent extends PositionComponent {
       hasRing: rnd.nextDouble() > 0.5,
       hasMoon: rnd.nextDouble() > 0.4,
       rotationSpeed: rnd.nextDouble() * 0.3 + 0.05,
+      scrollSpeed: _scrollSpeedForRadius(radius),
     );
   }
 
@@ -91,16 +129,16 @@ class PlanetComponent extends PositionComponent {
       ..color = _ringColor.withValues(alpha: 0.6)
       ..style = PaintingStyle.stroke
       ..strokeWidth = r * 0.25;
-    _moonPaint = Paint()
-      ..color = const Color(0xFFBDBDBD);
-    _shadowPaint = Paint()
-      ..color = Colors.black.withValues(alpha: 0.35);
+    _moonPaint = Paint()..color = const Color(0xFFBDBDBD);
+    _shadowPaint = Paint()..color = Colors.black.withValues(alpha: 0.35);
   }
 
   @override
   void update(double dt) {
     super.update(dt);
     _rotation += _rotationSpeed * dt;
+    // Parallax: Planet scrollt nach unten
+    position.y += scrollSpeed * dt;
   }
 
   @override
@@ -111,10 +149,10 @@ class PlanetComponent extends PositionComponent {
     // Glow
     canvas.drawCircle(center, _glowRadius, _glowPaint);
 
-    // Planet-Körper
+    // Planet-Koerper
     canvas.drawCircle(center, r, _planetPaint);
 
-    // Atmosphären-Schatten (Dunkel rechts)
+    // Atmosphaeren-Schatten (dunkel rechts)
     canvas.drawArc(
       Rect.fromCircle(center: center, radius: r),
       -pi / 4,
@@ -146,8 +184,16 @@ class PlanetComponent extends PositionComponent {
   }
 }
 
-/// Verwaltet mehrere Planeten im Hintergrund (Zone 4)
+// ---------------------------------------------------------------------------
+// PlanetLayer -- verwaltet mehrere Planeten + Endlos-Recycling
+// ---------------------------------------------------------------------------
+
+/// Verwaltet mehrere Planeten im Hintergrund (Zone 4).
+/// Planeten scrollen langsam von oben nach unten (Parallaxe),
+/// werden am unteren Rand despawnt und oben neu gespawnt (endlos).
 class PlanetLayer extends Component {
+  static const int _kPlanetCount = 5;
+
   final List<PlanetComponent> _planets = [];
   final Random _rnd = Random(99);
   final double _screenWidth;
@@ -161,11 +207,11 @@ class PlanetLayer extends Component {
   /// Wird sichtbar wenn Zone 4 erreicht
   void setVisible(bool visible) {
     if (visible && !_spawned) {
-      _spawnPlanets();
+      _spawnInitialPlanets();
       _spawned = true;
-      return; // Beim ersten Spawn direkt sichtbar
+      return;
     }
-    // Planeten zum Component-Tree hinzufügen oder entfernen
+    // Planeten zum Component-Tree hinzufuegen oder entfernen
     for (final p in _planets) {
       if (visible && !p.isMounted) {
         add(p);
@@ -175,16 +221,44 @@ class PlanetLayer extends Component {
     }
   }
 
-  void _spawnPlanets() {
-    const int count = 4;
-    for (int i = 0; i < count; i++) {
+  /// Erstellt initiale Planeten verteilt ueber den gesamten Bildschirm
+  void _spawnInitialPlanets() {
+    for (int i = 0; i < _kPlanetCount; i++) {
       final planet = PlanetComponent.random(
         rnd: _rnd,
         screenWidth: _screenWidth,
+        // Initial zufaellig im Bildschirm verteilt (kein Popping)
         screenHeight: _screenHeight,
       );
       _planets.add(planet);
       add(planet);
+    }
+  }
+
+  @override
+  void update(double dt) {
+    super.update(dt);
+    if (!_spawned) return;
+
+    // Planeten die unten raus sind, recyclen (oben neu spawnen)
+    for (int i = 0; i < _planets.length; i++) {
+      final p = _planets[i];
+      final double radius = p.size.x / 2;
+      if (p.position.y - radius > _screenHeight + 60) {
+        // Planet aus Tree und Liste entfernen, neuen oben spawnen
+        if (p.isMounted) remove(p);
+        _planets.removeAt(i);
+
+        final newPlanet = PlanetComponent.random(
+          rnd: _rnd,
+          screenWidth: _screenWidth,
+          // Oben ausserhalb des Bildschirms spawnen (mit Zufalls-Versatz)
+          spawnY: -(radius * 2 + _rnd.nextDouble() * 200 + 20),
+        );
+        _planets.insert(i, newPlanet);
+        add(newPlanet);
+        break; // Pro Frame hoechstens einen Planeten recyclen
+      }
     }
   }
 }

@@ -135,7 +135,7 @@ class PowerupSpawner {
 
   // Spawn-Intervalle in Metern (min/max Abstand zwischen Spawns)
   static const Map<PowerupType, (double, double)> spawnIntervals = {
-    PowerupType.fuel:   (200, 400),
+    PowerupType.fuel:   (400, 700), // strategisches Treibstoffmanagement
     PowerupType.magnet: (500, 800),
     PowerupType.shield: (800, 1200),
   };

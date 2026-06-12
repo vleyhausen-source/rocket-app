@@ -218,8 +218,8 @@ class ScoreConstants {
   /// Höhenzone Lila: ab 5000m
   // Zone 3 hat keinen Max-Wert (alles darüber)
 
-  /// Coins pro Runde (zufällig gespawnt)
-  static const int kCoinsPerRun = 20;
+  /// Coins pro Runde (zufällig gespawnt) -- 30% reduziert für mehr Sammel-Anreiz
+  static const int kCoinsPerRun = 14;
 
   /// Mindesthöhe für Coin-Spawn (Bodenzone frei lassen)
   static const double kCoinMinHeightPx = 80.0;

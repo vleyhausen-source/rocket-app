@@ -8,6 +8,7 @@ import 'package:rocket_app/components/background_component.dart';
 import 'package:rocket_app/components/cloud_component.dart';
 import 'package:rocket_app/components/coin_component.dart';
 import 'package:rocket_app/components/explosion_component.dart';
+import 'package:rocket_app/components/meteor_component.dart';
 import 'package:rocket_app/components/planet_component.dart';
 import 'package:rocket_app/components/rocket_component.dart';
 import 'package:rocket_app/game/atmosphere_zone.dart';
@@ -73,6 +74,10 @@ class RocketGame extends FlameGame
 
   // --- Coin-Tracking ---
   final List<CoinComponent> _activeCoins = [];
+
+  // --- Meteor-Tracking ---
+  final List<MeteorComponent> _activeMeteors = [];
+  final MeteorSpawner _meteorSpawner = MeteorSpawner();
 
   // --- Touch-Tracking ---
   final Map<int, double> _activeTouches = {};
@@ -199,6 +204,8 @@ class RocketGame extends FlameGame
     _updateCoinMagnet(safeDt);
     _updatePowerups(safeDt);
     _checkPowerupCollisions();
+    _checkMeteorSpawn();
+    _checkMeteorCollisions();
     _updateMilestones();
     
     // Schub-Sound aktualisieren
@@ -293,12 +300,17 @@ class RocketGame extends FlameGame
 
     // Powerups mitscrollen
     _scrollPowerups(delta);
+
+    // Meteore mitscrollen
+    for (final m in _activeMeteors) {
+      m.scrollDown(delta);
+    }
   }
 
   /// Spawnt neue Coins wenn der Spieler neue Hoehenbereiche erreicht.
   /// Alle 3 Bildschirmhoehen wird eine neue Coin-Reihe oben spawnt.
   double _lastCoinSpawnAltitudePx = 0.0;
-  static const double _kCoinRespawnIntervalPx = 400.0; // neue Coins alle 400px Hoehe
+  static const double _kCoinRespawnIntervalPx = 570.0; // neue Coins alle 570px Hoehe (30% weniger Dichte)
 
   void _checkNewCoinRow() {
     final double groundY = size.y - ScoreConstants.kCoinMinHeightPx;
@@ -315,7 +327,8 @@ class RocketGame extends FlameGame
   /// Sie scrollen durch die Kamera-Bewegung natürlich ins Bild hinein.
   void _spawnCoinRow() {
     final Random rnd = Random();
-    const int count = 7;
+    // 30% weniger Coins pro Reihe (5 statt 7)
+    const int count = 5;
     final int coinVal = _altitudeCoinValue();
 
     for (int i = 0; i < count; i++) {
@@ -632,6 +645,84 @@ class RocketGame extends FlameGame
   }
 
   // =========================================================================
+  // METEOR-SPAWN & KOLLISION
+  // =========================================================================
+
+  /// Prueft ob ein neuer Meteor gespawnt werden soll (ab 25.000m)
+  void _checkMeteorSpawn() {
+    final double altM = _cameraWorldY / ScoreConstants.kPixelsPerMeter;
+    final MeteorSpawnData? data = _meteorSpawner.check(
+      altitudeM: altM,
+      screenWidth: size.x,
+      screenHeight: size.y,
+    );
+    if (data == null) return;
+
+    final meteor = MeteorComponent.spawn(
+      rnd: data.rnd,
+      screenWidth: data.screenWidth,
+      screenHeight: data.screenHeight,
+    );
+    _activeMeteors.add(meteor);
+    add(meteor);
+  }
+
+  /// Prueft Kollisionen zwischen Meteoren und der Rakete.
+  /// Ohne Schild: Explosion + Absturz. Mit Schild: Meteor zerbricht, 1 Schild verbraucht.
+  void _checkMeteorCollisions() {
+    // Raketen-Mittelpunkt
+    final double rx = _rocket.position.x;
+    final double ry = _rocket.position.y - _rocket.size.y / 2;
+
+    for (final m in List<MeteorComponent>.from(_activeMeteors)) {
+      // Off-Screen-Cleanup
+      if (m.isOffScreen) {
+        m.removeFromParent();
+        _activeMeteors.remove(m);
+        continue;
+      }
+
+      // Einfacher Kreis-Kreis-Test (Meteor-Radius + Halbe Raketenbreite)
+      final double dx = m.position.x - rx;
+      final double dy = m.position.y - ry;
+      final double distSq = dx * dx + dy * dy;
+      // kRocketWidth/2 + Puffer
+      final double hitDist = 40.0 / 2 + 4.0 + m.size.x / 2 * 0.8;
+
+      if (distSq > hitDist * hitDist) continue;
+
+      // Treffer! Meteor deaktivieren
+      m.deactivate();
+      m.removeFromParent();
+      _activeMeteors.remove(m);
+
+      // Explosion an der Meteorposition spawnen
+      add(ExplosionComponent(center: Vector2(m.position.x, m.position.y)));
+
+      // Mit Schild: Schild verbrauchen, weiterfliegen
+      // Reihenfolge: Flight-Schild (Powerup) vor Upgrade-Schild
+      if (_flightShieldCooldown <= 0 && _flightShields > 0) {
+        _flightShields--;
+        _flightShieldCooldown = _kShieldCooldownDuration;
+        onStateChange?.call();
+        return;
+      }
+      final bool shieldAbsorbed = _upgMgr.absorbCrash();
+      if (shieldAbsorbed) {
+        _shieldCooldown = _kShieldCooldownDuration;
+        // Rakete leicht zurueckkatapultieren
+        _rocket.velocity.y = -200;
+        onStateChange?.call();
+        return;
+      }
+
+      // Kein Schild: Absturz
+      _triggerCrash();
+      return;
+    }
+  }
+
+  // =========================================================================
   // COIN SPAWNING
   // =========================================================================
 
@@ -770,6 +861,13 @@ class RocketGame extends FlameGame
     _flightShields = 0;
     _flightShieldCooldown = 0.0;
     _isNewHighscoreDuringFlight = false;
+
+    // Meteore zuruecksetzen
+    for (final m in List<MeteorComponent>.from(_activeMeteors)) {
+      m.removeFromParent();
+    }
+    _activeMeteors.clear();
+    _meteorSpawner.reset();
 
     // Kamera zurücksetzen
     _cameraWorldY = 0.0;
