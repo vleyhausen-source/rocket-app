@@ -776,6 +776,7 @@ class RocketGame extends FlameGame
     _lastCoinSpawnAltitudePx = 0.0;
     _background.resetCamera();
     _atmosphereObjects.reset();   // Wolken/Vögel auf Zone 1 zurücksetzen
+    _planetLayer.setVisible(false); // Planeten ausblenden (sichtbar nach Absturz aus Zone 4)
     _shieldCooldown = 0.0;
     _wallHitCooldown = 0.0;
 
