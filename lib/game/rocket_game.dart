@@ -301,10 +301,8 @@ class RocketGame extends FlameGame
     // Powerups mitscrollen
     _scrollPowerups(delta);
 
-    // Meteore mitscrollen
-    for (final m in _activeMeteors) {
-      m.scrollDown(delta);
-    }
+    // Meteore NICHT mitscrollen -- sie bewegen sich im Screen-Space,
+    // nicht im Welt-Koordinatensystem. Eigene Velocity reicht.
   }
 
   /// Spawnt neue Coins wenn der Spieler neue Hoehenbereiche erreicht.

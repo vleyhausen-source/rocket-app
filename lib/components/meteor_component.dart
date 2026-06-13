@@ -18,9 +18,9 @@ const double kMeteorSpawnIntervalMax = 2500.0;
 const double kMeteorRadiusMin = 18.0;
 const double kMeteorRadiusMax = 34.0;
 
-/// Geschwindigkeitsbereich in px/s (sehr langsam -- eigene Bewegung minimal vs. Kamera-Scroll)
-const double kMeteorSpeedMin = 14.0;
-const double kMeteorSpeedMax = 24.0;
+/// Geschwindigkeitsbereich in px/s (Screen-Space, kein Kamera-Scroll-Einfluss)
+const double kMeteorSpeedMin = 45.0;
+const double kMeteorSpeedMax = 80.0;
 
 // ---------------------------------------------------------------------------
 // MeteorComponent -- einzelner Meteor
