@@ -18,9 +18,11 @@ const double kMeteorSpawnIntervalMax = 2500.0;
 const double kMeteorRadiusMin = 18.0;
 const double kMeteorRadiusMax = 34.0;
 
-/// Geschwindigkeitsbereich in px/s (Screen-Space, kein Kamera-Scroll-Einfluss)
-const double kMeteorSpeedMin = 45.0;
-const double kMeteorSpeedMax = 80.0;
+/// Scroll-Geschwindigkeit in px/s: 10% schneller als der groesste Planet (22 px/s)
+const double kMeteorScrollSpeed = 24.2;
+
+/// Schweif-Laenge als Vielfaches des Radius
+const double kMeteorTailLengthFactor = 5.0;
 
 // ---------------------------------------------------------------------------
 // MeteorComponent -- einzelner Meteor
@@ -29,17 +31,16 @@ const double kMeteorSpeedMax = 80.0;
 /// Callback wenn der Meteor die Rakete getroffen hat
 typedef MeteorHitCallback = void Function(bool hasShield);
 
-/// Ein Meteor-Objekt das sich diagonal durch den Bildschirm bewegt.
-/// Spawnt am Rand (links, rechts oder oben) und fliegt diagonal
-/// in Richtung der gegenueberliegenden Seite.
+/// Ein Meteor der sich wie ein Planet von oben nach unten durch den Screen
+/// bewegt (Screen-Space, kein Welt-Scroll-Einfluss).
+/// Spawnt immer oben ausserhalb des Bildschirms, laeuft senkrecht nach unten.
+/// Hat einen Feuer-Schweif nach oben.
 class MeteorComponent extends PositionComponent with CollisionCallbacks {
   final double _radius;
-  final Vector2 _velocity;
-  final double _screenWidth;
   final double _screenHeight;
   bool _active = true;
 
-  // Visuelle Attribute (zufaellig bei Erstellung)
+  // Visuelle Attribute
   final double _craterSeed;
   double _rotation = 0.0;
   final double _rotationSpeed;
@@ -52,14 +53,10 @@ class MeteorComponent extends PositionComponent with CollisionCallbacks {
   MeteorComponent._({
     required Vector2 position,
     required double radius,
-    required Vector2 velocity,
-    required double screenWidth,
     required double screenHeight,
     required double craterSeed,
     required double rotationSpeed,
   })  : _radius = radius,
-        _velocity = velocity,
-        _screenWidth = screenWidth,
         _screenHeight = screenHeight,
         _craterSeed = craterSeed,
         _rotationSpeed = rotationSpeed,
@@ -69,8 +66,8 @@ class MeteorComponent extends PositionComponent with CollisionCallbacks {
           anchor: Anchor.center,
         );
 
-  /// Erstellt einen neuen Meteor. Spawn-Position: zufaellig Rand
-  /// (links, rechts oder oben). Flugrichtung: diagonal across.
+  /// Erstellt einen neuen Meteor. Spawnt immer oben ausserhalb des Bildschirms
+  /// an einer zufaelligen X-Position (wie Planeten).
   factory MeteorComponent.spawn({
     required Random rnd,
     required double screenWidth,
@@ -78,49 +75,19 @@ class MeteorComponent extends PositionComponent with CollisionCallbacks {
   }) {
     final double radius =
         kMeteorRadiusMin + rnd.nextDouble() * (kMeteorRadiusMax - kMeteorRadiusMin);
-    final double speed =
-        kMeteorSpeedMin + rnd.nextDouble() * (kMeteorSpeedMax - kMeteorSpeedMin);
 
-    // Spawn-Seite: 0 = links, 1 = rechts, 2 = oben
-    final int spawnSide = rnd.nextInt(3);
-
-    late Vector2 spawnPos;
-    late Vector2 dir;
-
-    switch (spawnSide) {
-      case 0: // links -> diagonal nach rechts-unten oder rechts-oben
-        spawnPos = Vector2(-radius - 10, rnd.nextDouble() * screenHeight);
-        dir = Vector2(
-          1.0,
-          (rnd.nextDouble() - 0.5) * 1.2,
-        );
-      case 1: // rechts -> diagonal nach links-unten oder links-oben
-        spawnPos = Vector2(screenWidth + radius + 10, rnd.nextDouble() * screenHeight);
-        dir = Vector2(
-          -1.0,
-          (rnd.nextDouble() - 0.5) * 1.2,
-        );
-      default: // oben -> diagonal nach links-unten oder rechts-unten
-        spawnPos = Vector2(
-          rnd.nextDouble() * screenWidth,
-          -radius - 10,
-        );
-        final double xDir = rnd.nextBool() ? 1.0 : -1.0;
-        dir = Vector2(xDir * (0.4 + rnd.nextDouble() * 0.6), 1.0);
-    }
-
-    // Richtungsvektor normieren
-    final double len = dir.length;
-    dir.scale(speed / len);
+    // Immer von oben spawnen (wie Planeten), zufaelliges X
+    final Vector2 spawnPos = Vector2(
+      rnd.nextDouble() * screenWidth * 0.8 + screenWidth * 0.1,
+      -radius - 20,
+    );
 
     return MeteorComponent._(
       position: spawnPos,
       radius: radius,
-      velocity: dir,
-      screenWidth: screenWidth,
       screenHeight: screenHeight,
       craterSeed: rnd.nextDouble() * 100,
-      rotationSpeed: (rnd.nextDouble() - 0.5) * 1.5,
+      rotationSpeed: (rnd.nextDouble() - 0.5) * 0.8,
     );
   }
 
@@ -135,7 +102,7 @@ class MeteorComponent extends PositionComponent with CollisionCallbacks {
       ..color = const Color(0xFF5A5048)
       ..style = PaintingStyle.fill;
     _glowPaint = Paint()
-      ..color = const Color(0xFFFF6600).withValues(alpha: 0.18)
+      ..color = const Color(0xFFFF6600).withValues(alpha: 0.25)
       ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 10);
 
     // Kollisions-Hitbox (Kreis, etwas kleiner als Radius fuer faire Kollision)
@@ -147,15 +114,12 @@ class MeteorComponent extends PositionComponent with CollisionCallbacks {
     super.update(dt);
     if (!_active) return;
 
-    position += _velocity * dt;
+    // Bewegung nur senkrecht nach unten -- identisch zum Planeten-Scroll
+    position.y += kMeteorScrollSpeed * dt;
     _rotation += _rotationSpeed * dt;
 
-    // Off-Screen mit Puffer -> deaktivieren (Cleanup durch MeteorSpawner)
-    final double margin = _radius + 40;
-    if (position.x < -margin ||
-        position.x > _screenWidth + margin ||
-        position.y < -margin ||
-        position.y > _screenHeight + margin) {
+    // Unten raus -> deaktivieren
+    if (position.y > _screenHeight + _radius + 40) {
       _active = false;
     }
   }
@@ -167,11 +131,14 @@ class MeteorComponent extends PositionComponent with CollisionCallbacks {
     final double r = _radius;
     final Offset center = Offset(r, r);
 
+    // --- Schweif (nach oben, vor dem Fels gezeichnet) ---
+    _drawTail(canvas, r, center);
+
     canvas.save();
     canvas.translate(center.dx, center.dy);
     canvas.rotate(_rotation);
 
-    // Schein (Glow -- Hitze-Trail)
+    // Glow-Ring
     canvas.drawCircle(Offset.zero, r * 1.4, _glowPaint);
 
     // Fels-Basis
@@ -192,7 +159,6 @@ class MeteorComponent extends PositionComponent with CollisionCallbacks {
     for (int i = 0; i < 3; i++) {
       final double cx = (rndKrater.nextDouble() - 0.5) * r * 1.2;
       final double cy = (rndKrater.nextDouble() - 0.5) * r * 1.2;
-      // Krater nur zeichnen wenn innerhalb des Planeten
       if (cx * cx + cy * cy < r * r * 0.7) {
         canvas.drawCircle(
           Offset(cx, cy),
@@ -205,16 +171,76 @@ class MeteorComponent extends PositionComponent with CollisionCallbacks {
     canvas.restore();
   }
 
+  /// Zeichnet den Feuer-Schweif nach oben (entgegen der Bewegungsrichtung).
+  void _drawTail(Canvas canvas, double r, Offset center) {
+    final double tailLen = r * kMeteorTailLengthFactor;
+
+    // Schweif: Dreieck von Meteor-Oberseite nach oben, mit Gradient
+    // Spitze = Mitte oben des Meteors, Basis = Breite des Meteors
+    final Offset tipTop = Offset(center.dx, center.dy - r - tailLen);
+    final Offset baseLeft = Offset(center.dx - r * 0.6, center.dy - r);
+    final Offset baseRight = Offset(center.dx + r * 0.6, center.dy - r);
+
+    final Path tailPath = Path()
+      ..moveTo(tipTop.dx, tipTop.dy)
+      ..lineTo(baseLeft.dx, baseLeft.dy)
+      ..lineTo(baseRight.dx, baseRight.dy)
+      ..close();
+
+    // Gradient: unten (Basis) = helles Orange, oben (Spitze) = transparent
+    final Paint tailPaint = Paint()
+      ..shader = LinearGradient(
+        begin: Alignment.bottomCenter,
+        end: Alignment.topCenter,
+        colors: [
+          const Color(0xFFFF8C00).withValues(alpha: 0.85), // Basis: sattes Orange
+          const Color(0xFFFFD700).withValues(alpha: 0.4),  // Mitte: Gelb
+          const Color(0xFFFF4500).withValues(alpha: 0.0),  // Spitze: transparent
+        ],
+        stops: const [0.0, 0.4, 1.0],
+      ).createShader(
+        Rect.fromPoints(
+          Offset(center.dx, center.dy - r),
+          Offset(center.dx, center.dy - r - tailLen),
+        ),
+      );
+
+    canvas.drawPath(tailPath, tailPaint);
+
+    // Zweite Schicht: schmaler, heller Kern fuer Tiefe
+    final double coreWidth = r * 0.25;
+    final Path corePath = Path()
+      ..moveTo(center.dx, tipTop.dy + tailLen * 0.3) // Kern-Spitze etwas kuerzer
+      ..lineTo(center.dx - coreWidth, center.dy - r)
+      ..lineTo(center.dx + coreWidth, center.dy - r)
+      ..close();
+
+    final Paint corePaint = Paint()
+      ..shader = LinearGradient(
+        begin: Alignment.bottomCenter,
+        end: Alignment.topCenter,
+        colors: [
+          const Color(0xFFFFFFFF).withValues(alpha: 0.5), // Basis: weisslicher Kern
+          const Color(0xFFFFD700).withValues(alpha: 0.0), // Spitze: transparent
+        ],
+      ).createShader(
+        Rect.fromPoints(
+          Offset(center.dx, center.dy - r),
+          Offset(center.dx, center.dy - r - tailLen),
+        ),
+      );
+
+    canvas.drawPath(corePath, corePaint);
+  }
+
   /// True wenn der Meteor vom Screen verschwunden ist und entfernt werden soll
   bool get isOffScreen => !_active;
 
   /// Manuell deaktivieren (z.B. nach Schildkollision)
   void deactivate() => _active = false;
 
-  /// Skaliert die Position um [delta] nach unten (Kamera-Scroll)
-  void scrollDown(double delta) {
-    position.y += delta;
-  }
+  /// No-Op -- Meteore sind Screen-Space-Objekte, kein Welt-Scroll
+  void scrollDown(double delta) {}
 }
 
 // ---------------------------------------------------------------------------
@@ -236,7 +262,6 @@ class MeteorSpawner {
   }
 
   /// Prueft ob ein neuer Meteor gespawnt werden soll.
-  /// Gibt die Spawn-Position zurueck (oder null wenn nichts gespawnt wird).
   MeteorSpawnData? check({
     required double altitudeM,
     required double screenWidth,
