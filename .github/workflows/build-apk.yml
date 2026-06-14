@@ -18,13 +18,13 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           # Voller Clone-Verlauf noetig fuer git push am Ende
           fetch-depth: 0
 
       - name: Set up Java 21
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: 'temurin'
           java-version: '21'
@@ -66,14 +66,14 @@ jobs:
           echo "ARM64 APK: $(du -sh build/release/rocket-app-debug-arm64.apk | cut -f1)"
 
       - name: Upload fat APK as artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: rocket-app-debug-fat
           path: build/release/rocket-app-debug.apk
           retention-days: 30
 
       - name: Upload ARM64 APK as artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: rocket-app-debug-arm64
           path: build/release/rocket-app-debug-arm64.apk
@@ -90,14 +90,14 @@ jobs:
         # Derzeit mit Debug-Keys signiert (signingConfig = debug in build.gradle.kts).
 
       - name: Upload release AppBundle as artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: rocket-app-release-aab
           path: build/app/outputs/bundle/release/app-release.aab
           retention-days: 30
 
       - name: Upload debug symbols as artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: rocket-app-debug-symbols
           path: build/debug-info/

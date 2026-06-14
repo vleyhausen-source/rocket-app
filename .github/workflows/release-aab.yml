@@ -21,7 +21,7 @@ jobs:
     steps:
       # ── 1. Code holen ────────────────────────────────────────────────────────
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       # ── 2. Flutter 3.44.1 einrichten ─────────────────────────────────────────
       - name: Set up Flutter
@@ -33,7 +33,7 @@ jobs:
 
       # ── 3. Java 17 (Gradle-kompatibel) ───────────────────────────────────────
       - name: Set up Java 17
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: "temurin"
           java-version: "17"
@@ -72,7 +72,7 @@ jobs:
 
       # ── 9. AAB als Artifact speichern ─────────────────────────────────────────
       - name: Upload AAB Artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: rocket-rise-release-aab
           path: build/app/outputs/bundle/release/app-release.aab
@@ -80,7 +80,7 @@ jobs:
 
       # ── 10. Debug-Symbole speichern (für Crash-Analyse) ───────────────────────
       - name: Upload Debug Symbols
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: rocket-rise-debug-symbols
           path: build/debug-info/
