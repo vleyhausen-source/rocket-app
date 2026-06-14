@@ -18,8 +18,8 @@ const double kMeteorSpawnIntervalMax = 2500.0;
 const double kMeteorRadiusMin = 18.0;
 const double kMeteorRadiusMax = 34.0;
 
-/// Scroll-Geschwindigkeit in px/s: 10% schneller als der groesste Planet (22 px/s)
-const double kMeteorScrollSpeed = 24.2;
+/// Scroll-Geschwindigkeit in px/s: 30% schneller als vorher (war 24.2 px/s)
+const double kMeteorScrollSpeed = 31.46;
 
 /// Schweif-Laenge als Vielfaches des Radius
 const double kMeteorTailLengthFactor = 5.0;
