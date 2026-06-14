@@ -133,11 +133,11 @@ class PowerupComponent extends PositionComponent {
 class PowerupSpawner {
   final Random _rnd = Random();
 
-  // Spawn-Intervalle in Metern (min/max Abstand zwischen Spawns)
+  // Spawn-Intervalle in Metern (min/max Abstand zwischen Spawns) -- verdoppelt
   static const Map<PowerupType, (double, double)> spawnIntervals = {
-    PowerupType.fuel:   (1500, 2000), // seltenes Tank-Powerup (alle 1500-2000m)
-    PowerupType.magnet: (500, 800),
-    PowerupType.shield: (800, 1200),
+    PowerupType.fuel:   (3000, 4000), // seltenes Tank-Powerup (alle 3000-4000m)
+    PowerupType.magnet: (1000, 1600),
+    PowerupType.shield: (1600, 2400),
   };
 
   /// Nächste Spawn-Höhen pro Powerup-Typ

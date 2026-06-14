@@ -8,7 +8,7 @@ import 'package:flutter/material.dart';
 // ---------------------------------------------------------------------------
 
 /// Mindesthoehe (Meter) ab der Meteoriten spawnen
-const double kMeteorMinAltitudeM = 15000.0;
+const double kMeteorMinAltitudeM = 10000.0;
 
 /// Spawn-Intervall in Metern (min/max)
 const double kMeteorSpawnIntervalMin = 1500.0;
@@ -18,8 +18,8 @@ const double kMeteorSpawnIntervalMax = 2500.0;
 const double kMeteorRadiusMin = 18.0;
 const double kMeteorRadiusMax = 34.0;
 
-/// Scroll-Geschwindigkeit in px/s: 30% schneller als vorher (war 24.2 px/s)
-const double kMeteorScrollSpeed = 31.46;
+/// Scroll-Geschwindigkeit in px/s: nochmals 25% schneller (war 31.46 px/s)
+const double kMeteorScrollSpeed = 39.33;
 
 /// Schweif-Laenge als Vielfaches des Radius
 const double kMeteorTailLengthFactor = 5.0;
