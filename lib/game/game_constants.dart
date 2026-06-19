@@ -43,6 +43,9 @@ class GameConstants {
   static const double kHitboxTopFactor    = 0.00;
   static const double kHitboxBottomFactor = 0.90;
   static const double kHitboxRadiusFactor = 0.22;
+  /// Großzügigkeitsfaktor für Coin-Einsammel-Radius (Multiplikator auf kCoinRadius).
+  /// 1.00 = exakt visueller Radius, >1.00 = magnetischer. Schrittweise anpassen.
+  static const double kCoinCollectFactor  = 1.10;
 
   /// Maximale Neigung der Rakete in Grad
   static const double kMaxTiltDegrees = 45.0;

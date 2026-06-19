@@ -670,7 +670,7 @@ class RocketGame extends FlameGame
     final double capsuleBottom = _rocket.size.y * GameConstants.kHitboxBottomFactor;
     // Radius = halbe Raketenbreite + Coin-Radius (für großzügige Einsammel-Zone)
     const double capsuleHalfW  = GameConstants.kRocketWidth * GameConstants.kHitboxRadiusFactor;
-    const double coinCollectR  = CoinComponent.kCoinRadius * 1.35 + capsuleHalfW;
+    const double coinCollectR  = CoinComponent.kCoinRadius * GameConstants.kCoinCollectFactor + capsuleHalfW;
 
     for (final coin in List<CoinComponent>.from(_activeCoins)) {
       // Off-Screen-Cleanup
