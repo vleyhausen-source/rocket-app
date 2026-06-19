@@ -120,5 +120,15 @@
     "placeholders": {
       "cost": { "type": "int" }
     }
-  }
+  },
+
+  "tutorialTitle": "How to play",
+  "tutorialClose": "GOT IT",
+  "tutorialMenuButton": "HOW TO PLAY",
+  "tutorialSectionControls": "Controls",
+  "tutorialControlsText": "Touch & hold screen → thrust. Tap left/right → tilt. The further from center, the stronger the tilt.",
+  "tutorialSectionCoins": "Coins & Powerups",
+  "tutorialCoinsText": "Collect coins to buy upgrades. Powerups: ⛽ +Fuel · 🧲 Coin Magnet · 🛡️ Flight Shield.",
+  "tutorialSectionSpecial": "Booster & Autopilot",
+  "tutorialSpecialText": "Single-use per flight – appear bottom left & right. Only visible after purchase in the shop."
 }

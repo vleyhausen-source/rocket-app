@@ -266,4 +266,31 @@ class AppLocalizationsEn extends AppLocalizations {
   String notEnoughCoinsSnackbar(int cost) {
     return 'Not enough Coins! Need: $cost';
   }
+
+  @override
+  String get tutorialTitle => 'How to play';
+
+  @override
+  String get tutorialClose => 'GOT IT';
+
+  @override
+  String get tutorialMenuButton => 'HOW TO PLAY';
+
+  @override
+  String get tutorialSectionControls => 'Controls';
+
+  @override
+  String get tutorialControlsText => 'Touch & hold screen → thrust. Tap left/right → tilt. The further from center, the stronger the tilt.';
+
+  @override
+  String get tutorialSectionCoins => 'Coins & Powerups';
+
+  @override
+  String get tutorialCoinsText => 'Collect coins to buy upgrades. Powerups: ⛽ +Fuel · 🧲 Coin Magnet · 🛡️ Flight Shield.';
+
+  @override
+  String get tutorialSectionSpecial => 'Booster & Autopilot';
+
+  @override
+  String get tutorialSpecialText => 'Single-use per flight – appear bottom left & right. Only visible after purchase in the shop.';
 }

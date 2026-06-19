@@ -10,6 +10,7 @@ import 'package:rocket_app/ui/shop_screen.dart';
 import 'package:rocket_app/ui/streak_dialog.dart';
 import 'package:rocket_app/ui/theme.dart';
 import 'package:rocket_app/ui/transitions.dart';
+import 'package:rocket_app/ui/tutorial_screen.dart';
 
 /// Animiertes Hauptmenü mit Sternenhintergrund und Raketen-Logo
 class MainMenuScreen extends StatefulWidget {
@@ -129,6 +130,13 @@ class _MainMenuScreenState extends State<MainMenuScreen>
       await _scoreMgr.save();
     }
     if (mounted) setState(() { _streakDay = StreakManager.instance.streakDay; });
+
+    // Tutorial beim allerersten Start automatisch anzeigen
+    final bool showTutorial = await TutorialHelper.shouldShowAutomatic();
+    if (showTutorial && mounted) {
+      await TutorialHelper.markShown();
+      if (mounted) await showTutorialDialog(context);
+    }
   }
 
   @override
@@ -149,6 +157,10 @@ class _MainMenuScreenState extends State<MainMenuScreen>
     Navigator.of(context).push(
       RocketTransitions.slideUp(const ShopScreen()),
     );
+  }
+
+  void _openTutorial() {
+    showTutorialDialog(context);
   }
 
   @override
@@ -215,6 +227,7 @@ class _MainMenuScreenState extends State<MainMenuScreen>
                     pulseAnim: _pulse,
                     onStart: _startGame,
                     onShop: _openShop,
+                    onTutorial: _openTutorial,
                   ),
                 ),
 
@@ -382,11 +395,13 @@ class _ButtonSection extends StatelessWidget {
   final Animation<double> pulseAnim;
   final VoidCallback onStart;
   final VoidCallback onShop;
+  final VoidCallback onTutorial;
 
   const _ButtonSection({
     required this.pulseAnim,
     required this.onStart,
     required this.onShop,
+    required this.onTutorial,
   });
 
   @override
@@ -494,6 +509,28 @@ class _ButtonSection extends StatelessWidget {
               ),
             ),
           ],
+
+          // ANLEITUNG-Button
+          const SizedBox(height: 10),
+          SizedBox(
+            width: double.infinity,
+            height: 44,
+            child: TextButton.icon(
+              onPressed: onTutorial,
+              icon: const Icon(Icons.help_outline, size: 18,
+                  color: Colors.white38),
+              label: Text(
+                context.l10n.tutorialMenuButton,
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 2,
+                  fontFamily: 'monospace',
+                  color: Colors.white38,
+                ),
+              ),
+            ),
+          ),
         ],
       ),
     );

@@ -266,4 +266,31 @@ class AppLocalizationsDe extends AppLocalizations {
   String notEnoughCoinsSnackbar(int cost) {
     return 'Nicht genug Coins! Benötigt: $cost';
   }
+
+  @override
+  String get tutorialTitle => "So geht's";
+
+  @override
+  String get tutorialClose => 'VERSTANDEN';
+
+  @override
+  String get tutorialMenuButton => 'ANLEITUNG';
+
+  @override
+  String get tutorialSectionControls => 'Steuerung';
+
+  @override
+  String get tutorialControlsText => 'Bildschirm berühren & halten → Schub. Links/Rechts tippen → Neigung. Je weiter vom Bildschirm-Mittelpunkt, desto stärker.';
+
+  @override
+  String get tutorialSectionCoins => 'Coins & Powerups';
+
+  @override
+  String get tutorialCoinsText => 'Coins einsammeln für Upgrades im Shop. Powerups ⛽ +Treibstoff · 🧲 Münzmagnet · 🛡️ Flugschild.';
+
+  @override
+  String get tutorialSectionSpecial => 'Booster & Autopilot';
+
+  @override
+  String get tutorialSpecialText => 'Einmalig pro Flug nutzbar – erscheinen unten links & rechts. Nur sichtbar nach Kauf im Shop.';
 }

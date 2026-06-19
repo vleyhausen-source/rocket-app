@@ -140,10 +140,14 @@ class PowerupSpawner {
     PowerupType.shield: (1600, 2400),
   };
 
-  /// Nächste Spawn-Höhen pro Powerup-Typ
+  /// Nächste Spawn-Höhen pro Powerup-Typ (Zeitpunkt des ECHTEN Spawns)
   final Map<PowerupType, double> _nextSpawnAltM = {};
 
+  /// Bereits geplante Spawns (Telegraph + Powerup ausstehend)
+  final List<_PlannedSpawn> _planned = [];
+
   void reset() {
+    _planned.clear();
     for (final type in PowerupType.values) {
       final (min, max) = spawnIntervals[type]!;
       // Erster Spawn erst nach min-Abstand
@@ -151,26 +155,112 @@ class PowerupSpawner {
     }
   }
 
-  /// Gibt neue Powerups zurück die bei der aktuellen Höhe gespawnt werden sollen.
-  /// Gibt eine leere Liste zurück wenn nichts gespawnt wird.
-  List<PowerupSpawnData> check(double altitudeM, double screenWidth) {
-    final List<PowerupSpawnData> result = [];
+  /// Gibt neue Spawn-Aufträge zurück.
+  /// [altitudeM] = aktuelle Höhe, [screenWidth] = Bildschirmbreite,
+  /// [pixelsPerMeter] = Umrechnungsfaktor.
+  ///
+  /// Rückgabe: Liste von [PlannedSpawnResult] mit Feldern:
+  ///   - [data]: SpawnData (Position, Typ)
+  ///   - [spawnAtAltM]: Höhe bei der das echte Powerup erscheint
+  ///   - [telegraphNow]: true => Telegraph sofort hinzufügen
+  ///   - [spawnNow]: true => echtes Powerup sofort hinzufügen (Telegraph abgelaufen)
+  List<PlannedSpawnResult> tick(
+      double altitudeM, double screenWidth, double pixelsPerMeter) {
+    final List<PlannedSpawnResult> result = [];
+
+    // --- Neue Spawns 3s im Voraus einplanen ---
+    // kTelegraphLeadM = Meter die 3s entsprechen bei durchschnittlicher Aufstiegsgeschwindigkeit.
+    // Wir planen wenn der Spawn-Zeitpunkt innerhalb des Telegraph-Vorlaufs liegt.
+    // Wir berechnen den Meter-Vorlauf dynamisch als 3s × (aktuell zurückgelegte m/s).
+    // Da wir keine Geschwindigkeit kennen, nehmen wir einen festen konservativen Wert:
+    // ~150 m/s Aufstieg => 3s = 450m Vorlauf. Etwas großzügig = 500m.
+    const double kTelegraphLeadM = 500.0;
 
     for (final type in PowerupType.values) {
-      final threshold = _nextSpawnAltM[type] ?? 9999;
-      if (altitudeM >= threshold) {
-        final (min, max) = spawnIntervals[type]!;
-        _nextSpawnAltM[type] = altitudeM + min + _rnd.nextDouble() * (max - min);
+      final double spawnAlt = _nextSpawnAltM[type] ?? 9999;
 
-        // Spawn oberhalb des Bildschirms (negatives Y)
-        final x = screenWidth * 0.1 + _rnd.nextDouble() * screenWidth * 0.8;
-        const y = -60.0;
-        result.add(PowerupSpawnData(
-          position: Vector2(x, y),
+      // Noch kein Eintrag in _planned? Telegraph-Zeitpunkt prüfen.
+      final bool alreadyPlanned =
+          _planned.any((p) => p.type == type && !p.powerupEmitted);
+
+      if (!alreadyPlanned && altitudeM >= spawnAlt - kTelegraphLeadM) {
+        final (min, max) = spawnIntervals[type]!;
+        // Nächsten Spawn-Zeitpunkt planen
+        _nextSpawnAltM[type] =
+            spawnAlt + min + _rnd.nextDouble() * (max - min);
+
+        // Position bestimmen (Spawn oberhalb Bildschirm in Welt-Y = negativ)
+        final double x = screenWidth * 0.1 + _rnd.nextDouble() * screenWidth * 0.8;
+        const double y = -60.0;
+
+        _planned.add(_PlannedSpawn(
           type: type,
+          spawnAtAltM: spawnAlt,
+          data: PowerupSpawnData(position: Vector2(x, y), type: type),
+        ));
+
+        // Telegraph sofort emittiieren
+        result.add(PlannedSpawnResult(
+          data: PowerupSpawnData(position: Vector2(x, y), type: type),
+          spawnAtAltM: spawnAlt,
+          emitTelegraph: true,
+          emitPowerup: false,
         ));
       }
     }
+
+    // --- Ausstehende Spawns auslösen ---
+    for (final planned in List<_PlannedSpawn>.from(_planned)) {
+      if (!planned.powerupEmitted && altitudeM >= planned.spawnAtAltM) {
+        planned.powerupEmitted = true;
+        result.add(PlannedSpawnResult(
+          data: planned.data,
+          spawnAtAltM: planned.spawnAtAltM,
+          emitTelegraph: false,
+          emitPowerup: true,
+        ));
+      }
+    }
+
+    // Abgeschlossene Einträge bereinigen
+    _planned.removeWhere((p) => p.powerupEmitted);
+
     return result;
   }
+}
+
+/// Interner Planungs-Eintrag
+class _PlannedSpawn {
+  final PowerupType type;
+  final double spawnAtAltM;
+  final PowerupSpawnData data;
+  bool powerupEmitted = false;
+
+  _PlannedSpawn({
+    required this.type,
+    required this.spawnAtAltM,
+    required this.data,
+  });
+}
+
+/// Ergebnis eines tick()-Calls
+class PlannedSpawnResult {
+  /// Spawn-Daten (Position + Typ)
+  final PowerupSpawnData data;
+
+  /// Höhe bei der das echte Powerup gespawnt wird
+  final double spawnAtAltM;
+
+  /// true => Telegraph-Komponente erstellen
+  final bool emitTelegraph;
+
+  /// true => echtes Powerup spawnen (Telegraph entfernen)
+  final bool emitPowerup;
+
+  const PlannedSpawnResult({
+    required this.data,
+    required this.spawnAtAltM,
+    required this.emitTelegraph,
+    required this.emitPowerup,
+  });
 }

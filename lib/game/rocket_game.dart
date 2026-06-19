@@ -18,6 +18,7 @@ import 'package:rocket_app/managers/score_manager.dart';
 import 'package:rocket_app/managers/upgrade_manager.dart';
 import 'package:rocket_app/managers/milestone_manager.dart';
 import 'package:rocket_app/components/powerup_component.dart';
+import 'package:rocket_app/components/powerup_telegraph_component.dart';
 import 'package:rocket_app/services/ad_service.dart';
 import 'package:rocket_app/services/games_services_controller.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -49,6 +50,9 @@ class RocketGame extends FlameGame
   // --- Powerup-Tracking ---
   final List<PowerupComponent> _activePowerups = [];
   final PowerupSpawner _powerupSpawner = PowerupSpawner();
+
+  // --- Telegraph-Tracking (Vorankündigungen) ---
+  final List<PowerupTelegraphComponent> _activeTelegraphs = [];
 
   // --- Powerup-Laufzeit-Zustand ---
   double _magnetTimer = 0.0;      // Sekunden verbleibend
@@ -304,6 +308,9 @@ class RocketGame extends FlameGame
     // Powerups mitscrollen
     _scrollPowerups(delta);
 
+    // Telegraphs mitscrollen
+    _scrollTelegraphs(delta);
+
     // Meteore NICHT mitscrollen -- sie bewegen sich im Screen-Space,
     // nicht im Welt-Koordinatensystem. Eigene Velocity reicht.
   }
@@ -406,20 +413,56 @@ class RocketGame extends FlameGame
   }
 
   // =========================================================================
-  // POWERUP-SPAWN
+  // POWERUP-SPAWN (Telegraph + echtes Powerup)
   // =========================================================================
 
   void _checkPowerupSpawn() {
     final double altM = _cameraWorldY / ScoreConstants.kPixelsPerMeter;
-    final List<PowerupSpawnData> spawns = _powerupSpawner.check(altM, size.x);
-    for (final s in spawns) {
-      final p = PowerupComponent(
-        position: s.position,
-        type: s.type,
-        onCollected: _onPowerupCollected,
-      );
-      _activePowerups.add(p);
-      add(p);
+    final List<PlannedSpawnResult> results = _powerupSpawner.tick(
+      altM,
+      size.x,
+      ScoreConstants.kPixelsPerMeter,
+    );
+
+    for (final r in results) {
+      if (r.emitTelegraph) {
+        // Telegraph-Marker an der Spawn-Position erzeugen
+        final telegraph = PowerupTelegraphComponent(
+          position: r.data.position.clone(),
+          powerupColor: r.data.type.color,
+        );
+        _activeTelegraphs.add(telegraph);
+        add(telegraph);
+      }
+
+      if (r.emitPowerup) {
+        // Zugehörigen Telegraph entfernen (falls noch vorhanden)
+        // Wir suchen den Telegraph an der nächstgelegenen Position (Typ+Nähe)
+        PowerupTelegraphComponent? matchingTelegraph;
+        double bestDist = double.infinity;
+        for (final t in _activeTelegraphs) {
+          final double dx = t.position.x - r.data.position.x;
+          final double dy = t.position.y - r.data.position.y;
+          final double d = dx * dx + dy * dy;
+          if (d < bestDist) {
+            bestDist = d;
+            matchingTelegraph = t;
+          }
+        }
+        if (matchingTelegraph != null) {
+          matchingTelegraph.removeFromParent();
+          _activeTelegraphs.remove(matchingTelegraph);
+        }
+
+        // Echtes Powerup spawnen
+        final p = PowerupComponent(
+          position: r.data.position.clone(),
+          type: r.data.type,
+          onCollected: _onPowerupCollected,
+        );
+        _activePowerups.add(p);
+        add(p);
+      }
     }
   }
 
@@ -442,12 +485,28 @@ class RocketGame extends FlameGame
         _activePowerups.remove(p);
       }
     }
+
+    // Telegraphs Off-Screen-Cleanup (abgelaufene/off-screen entfernen)
+    for (final t in List<PowerupTelegraphComponent>.from(_activeTelegraphs)) {
+      if (t.isExpired || t.position.y > size.y + 60) {
+        // isExpired entfernt sich selbst aus parent, aber sauber aus Liste entfernen
+        if (t.parent != null) t.removeFromParent();
+        _activeTelegraphs.remove(t);
+      }
+    }
   }
 
   // Powerups beim Kamerascrollen mitbewegen (wird in _scrollWorldObjects aufgerufen)
   void _scrollPowerups(double delta) {
     for (final p in _activePowerups) {
       p.position.y += delta;
+    }
+  }
+
+  // Telegraphs beim Kamerascrollen mitbewegen
+  void _scrollTelegraphs(double delta) {
+    for (final t in _activeTelegraphs) {
+      t.position.y += delta;
     }
   }
 
@@ -918,6 +977,11 @@ class RocketGame extends FlameGame
       p.removeFromParent();
     }
     _activePowerups.clear();
+    // Telegraphs ebenfalls zurücksetzen
+    for (final t in List<PowerupTelegraphComponent>.from(_activeTelegraphs)) {
+      if (t.parent != null) t.removeFromParent();
+    }
+    _activeTelegraphs.clear();
     _powerupSpawner.reset();
     _magnetTimer = 0.0;
     _flightShields = 0;

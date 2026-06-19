@@ -592,6 +592,17 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Not enough Coins! Need: {cost}'**
   String notEnoughCoinsSnackbar(int cost);
+
+  // Tutorial
+  String get tutorialTitle;
+  String get tutorialClose;
+  String get tutorialMenuButton;
+  String get tutorialSectionControls;
+  String get tutorialControlsText;
+  String get tutorialSectionCoins;
+  String get tutorialCoinsText;
+  String get tutorialSectionSpecial;
+  String get tutorialSpecialText;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

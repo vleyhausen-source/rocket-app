@@ -94,7 +94,7 @@ class HudWidget extends StatelessWidget {
           ),
         ),
 
-        // --- Rechte Seite: Spezial-Upgrade-Buttons ---
+        // --- Rechte Seite: Audio-Button (oben rechts) ---
         SafeArea(
           child: Align(
             alignment: Alignment.topRight,
@@ -110,27 +110,46 @@ class HudWidget extends StatelessWidget {
                     onTap: () => game.toggleAudio(),
                     tooltip: 'Audio',
                   ),
-                  const SizedBox(height: 8),
-                  // Booster
-                  if (game.boosterAvailable || game.boosterActive)
-                    _BoosterButton(
-                      isActive: game.boosterActive,
-                      timeLeft: game.boosterTimeLeft,
-                      onTap: onActivateBooster,
-                    ),
-                  if (game.boosterAvailable || game.boosterActive)
-                    const SizedBox(height: 8),
-                  // Autopilot
-                  if (game.autopilotAvailable || game.autopilotActive)
-                    _AutopilotButton(
-                      isActive: game.autopilotActive,
-                      onTap: onActivateAutopilot,
-                    ),
                 ],
               ),
             ),
           ),
         ),
+
+        // --- Booster (unten links) & Autopilot (unten rechts) ---
+        // Beide liegen im sicheren Bereich UNTERHALB der Ruheposition der Rakete.
+        // Der Stack sorgt dafür, dass KEINE Berührungen des Game-Canvas
+        // abgefangen werden (die Buttons haben explizite Tap-Handler,
+        // der Rest des Bildschirms bleibt für die Flame-Touch-Events frei).
+        if (game.boosterAvailable || game.boosterActive)
+          SafeArea(
+            child: Align(
+              alignment: Alignment.bottomLeft,
+              child: Padding(
+                // Mindest-Abstand zum Rand: 20dp links, 24dp unten
+                padding: const EdgeInsets.only(left: 20, bottom: 24),
+                child: _BoosterButton(
+                  isActive: game.boosterActive,
+                  timeLeft: game.boosterTimeLeft,
+                  onTap: onActivateBooster,
+                ),
+              ),
+            ),
+          ),
+
+        if (game.autopilotAvailable || game.autopilotActive)
+          SafeArea(
+            child: Align(
+              alignment: Alignment.bottomRight,
+              child: Padding(
+                padding: const EdgeInsets.only(right: 20, bottom: 24),
+                child: _AutopilotButton(
+                  isActive: game.autopilotActive,
+                  onTap: onActivateAutopilot,
+                ),
+              ),
+            ),
+          ),
       ],
     );
   }
