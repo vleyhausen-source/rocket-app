@@ -92,11 +92,20 @@ class RocketComponent extends PositionComponent with CollisionCallbacks {
       Paint()..color = const Color(0xFFFFEB3B), // Innere Flamme (gelb)
       Paint()..color = const Color(0xFFFFFFFF), // Kern (weiß)
     ];
-    // Hitbox für Coin-Kollision (kleineres Rechteck = fairer Treffer)
-    add(RectangleHitbox(
-      size: Vector2(size.x * 0.5, size.y * 0.6),
-      position: Vector2(size.x * 0.25, size.y * 0.2),
-    ));
+    // Polygon-Hitbox: passt zur visuellen Raketenform
+    // Schmal oben (Spitze), breiter in der Mitte (Cockpit/Rumpf), schmal unten (Düse)
+    // Koordinaten relativ zu size (w x h), Anchor = Mitte-unten (bottomCenter)
+    final double w = size.x;
+    final double h = size.y;
+    add(PolygonHitbox([
+      Vector2(w * 0.50, 0.0),          // Nasenspitze (Mitte oben)
+      Vector2(w * 0.72, h * 0.30),     // Nasenschulter rechts
+      Vector2(w * 0.72, h * 0.85),     // Rumpf rechts unten
+      Vector2(w * 0.55, h * 1.00),     // Düse rechts
+      Vector2(w * 0.45, h * 1.00),     // Düse links
+      Vector2(w * 0.28, h * 0.85),     // Rumpf links unten
+      Vector2(w * 0.28, h * 0.30),     // Nasenschulter links
+    ]));
   }
 
   /// Setzt die Rakete auf Startposition zurück

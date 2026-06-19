@@ -137,6 +137,14 @@ class RocketGame extends FlameGame
   @override
   Future<void> onLoad() async {
     await super.onLoad();
+
+    // Debug-Modus: Hitboxen visuell anzeigen (nur im Debug-Build)
+    // Deaktiviere für Release-Build (flutter run --release)
+    assert(() {
+      debugMode = true;
+      return true;
+    }());
+
     await _scoreManager.load();
     await _upgMgr.load();
     await _audioManager.initialize();
@@ -453,13 +461,17 @@ class RocketGame extends FlameGame
   // =========================================================================
 
   void _checkPowerupCollisions() {
-    final double rx = _rocket.position.x;
-    final double ry = _rocket.position.y - _rocket.size.y / 2;
-    const double collectRadius = PowerupComponent.kRadius + 22.0;
+    // Capsule-Test: wie bei Coins -- minimale Distanz zum Liniensegment der Raketenachse
+    final double rocketBottom = _rocket.position.y;
+    final double rocketTop    = _rocket.position.y - _rocket.size.y;
+    final double rocketX      = _rocket.position.x;
+    // Powerups sind groesser als Coins: kRadius=16, + halbe Breite + Puffer
+    const double collectRadius = PowerupComponent.kRadius + 18.0;
 
     for (final p in List<PowerupComponent>.from(_activePowerups)) {
-      final double dx = p.position.x - rx;
-      final double dy = p.position.y - ry;
+      final double clampedY = p.position.y.clamp(rocketTop, rocketBottom);
+      final double dx = p.position.x - rocketX;
+      final double dy = p.position.y - clampedY;
       if (dx * dx + dy * dy <= collectRadius * collectRadius) {
         p.collect();
         _activePowerups.remove(p);
@@ -620,9 +632,14 @@ class RocketGame extends FlameGame
   }
 
   void _checkCoinCollisions() {
-    final double rx = _rocket.position.x;
-    final double ry = _rocket.position.y - _rocket.size.y / 2;
-    const double collectRadius = CoinComponent.kCoinRadius + 20.0;
+    // Capsule-Test: minimale Distanz Coin→Raketenachse (Spitze bis Düse)
+    // Anchor = bottomCenter: position.y ist der unterste Punkt der Rakete
+    final double rocketBottom = _rocket.position.y;
+    final double rocketTop    = _rocket.position.y - _rocket.size.y;
+    final double rocketX      = _rocket.position.x;
+    // Effektivradius = Coin-Visuell-Radius * Hitbox-Faktor + halbe Raketenbreite (10px) + kleiner Puffer
+    // kCoinRadius=12, *1.35=16.2, + kRocketWidth/2*0.48=9.6, + 4 = ~30px total
+    const double collectRadius = CoinComponent.kCoinRadius * 1.35 + 13.6;
 
     for (final coin in List<CoinComponent>.from(_activeCoins)) {
       // Off-Screen-Cleanup: Coins die unter den Bildschirm gescrollt sind entfernen
@@ -632,8 +649,11 @@ class RocketGame extends FlameGame
         continue;
       }
 
-      final double dx = coin.position.x - rx;
-      final double dy = coin.position.y - ry;
+      // Clamp: nächsten Punkt auf der Raketenachse zum Coin bestimmen
+      final double clampedY =
+          coin.position.y.clamp(rocketTop, rocketBottom);
+      final double dx = coin.position.x - rocketX;
+      final double dy = coin.position.y - clampedY;
       if (dx * dx + dy * dy <= collectRadius * collectRadius) {
         coin.collect();
         _activeCoins.remove(coin);

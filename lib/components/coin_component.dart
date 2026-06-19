@@ -67,8 +67,8 @@ class CoinComponent extends PositionComponent with CollisionCallbacks {
       textDirection: TextDirection.ltr,
     )..layout();
 
-    // Kollisionsbox (Kreis)
-    add(CircleHitbox(radius: kCoinRadius));
+    // Kollisionsbox: Radius leicht groesser als visueller Radius (magnetisches Gefuehl)
+    add(CircleHitbox(radius: kCoinRadius * 1.35));
   }
 
   @override
