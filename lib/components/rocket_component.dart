@@ -229,26 +229,34 @@ class RocketComponent extends PositionComponent with CollisionCallbacks {
   }
 
   /// Kapsel-Hitbox als Overlay zeichnen (nur Debug).
-  /// Koordinaten identisch mit dem Capsule-Test in rocket_game.dart:
-  ///   halbe Breite = kRocketWidth * 0.36 = ~14.4px
-  ///   Top = 0 (Nasenspitze), Bottom = size.y (Düse)
-  ///   Anchor = bottomCenter → lokale y-Achse zeigt nach unten
+  /// Koordinaten identisch mit dem Capsule-Test in rocket_game.dart.
+  /// Faktoren:
+  ///   kHitboxTopFactor    = 0.00  (Nasenspitze)
+  ///   kHitboxBottomFactor = 0.90  (Rumpfende, vor Düse/Flamme)
+  ///   kHitboxRadiusFactor = 0.22  (halbe Rumpfbreite an der breitesten Stelle)
   void _renderHitboxDebug(Canvas canvas) {
     final double w = size.x;
     final double h = size.y;
-    // Kapselbreite entspricht dem collectRadius-Halfwidth im Kollisionstest
-    const double hw = GameConstants.kRocketWidth * 0.36; // ~14.4px
+    // Faktor-Konstanten: identisch mit den Werten in rocket_game.dart
+    const double topFactor    = GameConstants.kHitboxTopFactor;
+    const double bottomFactor = GameConstants.kHitboxBottomFactor;
+    const double radiusFactor = GameConstants.kHitboxRadiusFactor;
+
+    final double hw    = w * radiusFactor;          // halbe Kapselbreite in Pixeln
+    final double top   = h * topFactor;             // Kapsel-Oberkante
+    final double bot   = h * bottomFactor;          // Kapsel-Unterkante
+
     final Paint debugPaint = Paint()
-      ..color = const Color(0x8000FF88)
+      ..color = const Color(0xCC00FF88)             // helles Grün, gut sichtbar
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1.5;
-    // Kapsel = Rechteck + zwei Halbkreise an Top und Bottom
+    // Kapsel = RRect (Rechteck + Halbkreise oben/unten)
     final Rect rect = Rect.fromLTRB(
-      w * 0.5 - hw, 0,
-      w * 0.5 + hw, h,
+      w * 0.5 - hw, top,
+      w * 0.5 + hw, bot,
     );
     canvas.drawRRect(
-      RRect.fromRectAndRadius(rect, const Radius.circular(hw)),
+      RRect.fromRectAndRadius(rect, Radius.circular(hw)),
       debugPaint,
     );
   }

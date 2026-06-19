@@ -12,6 +12,7 @@ import 'package:rocket_app/components/meteor_component.dart';
 import 'package:rocket_app/components/planet_component.dart';
 import 'package:rocket_app/components/rocket_component.dart';
 import 'package:rocket_app/game/atmosphere_zone.dart';
+import 'package:rocket_app/game/game_constants.dart';
 import 'package:rocket_app/managers/audio_manager.dart';
 import 'package:rocket_app/managers/score_manager.dart';
 import 'package:rocket_app/managers/upgrade_manager.dart';
@@ -463,7 +464,7 @@ class RocketGame extends FlameGame
     final double anchorLx = _rocket.size.x * 0.5;
     final double anchorLy = _rocket.size.y;
     // Powerups groesser als Coins: kRadius=16, Kapsel etwas breiter
-    const double capsuleHalfW = 14.4;
+    const double capsuleHalfW = GameConstants.kRocketWidth * GameConstants.kHitboxRadiusFactor;
     const double collectRadius = PowerupComponent.kRadius + capsuleHalfW;
 
     for (final p in List<PowerupComponent>.from(_activePowerups)) {
@@ -471,7 +472,9 @@ class RocketGame extends FlameGame
       final double wy = p.position.y - anchorWy;
       final double lx = cosA * wx - sinA * wy + anchorLx;
       final double ly = sinA * wx + cosA * wy + anchorLy;
-      final double clampedLy = ly.clamp(0.0, _rocket.size.y);
+      final double capsuleTop    = _rocket.size.y * GameConstants.kHitboxTopFactor;
+      final double capsuleBottom = _rocket.size.y * GameConstants.kHitboxBottomFactor;
+      final double clampedLy = ly.clamp(capsuleTop, capsuleBottom);
       final double dx = lx - anchorLx;
       final double dy = ly - clampedLy;
       if (dx * dx + dy * dy <= collectRadius * collectRadius) {
@@ -661,10 +664,13 @@ class RocketGame extends FlameGame
     final double anchorLx = _rocket.size.x * 0.5; // = 20
     final double anchorLy = _rocket.size.y;        // = 80
 
-    // Kapsel-Parameter (lokal, achsenparallel)
-    const double capsuleHalfW = 14.4;       // kRocketWidth*0.36 -- halbe Breite der Kapsel
-    const double coinCollectR =
-        CoinComponent.kCoinRadius * 1.35 + capsuleHalfW;   // ~30.8px total
+    // Kapsel-Parameter — aus Faktor-Konstanten in GameConstants
+    // Längsachse: Nasenspitze (top) bis Rumpfende (bottom), ohne Düse/Flamme
+    final double capsuleTop    = _rocket.size.y * GameConstants.kHitboxTopFactor;
+    final double capsuleBottom = _rocket.size.y * GameConstants.kHitboxBottomFactor;
+    // Radius = halbe Raketenbreite + Coin-Radius (für großzügige Einsammel-Zone)
+    const double capsuleHalfW  = GameConstants.kRocketWidth * GameConstants.kHitboxRadiusFactor;
+    const double coinCollectR  = CoinComponent.kCoinRadius * 1.35 + capsuleHalfW;
 
     for (final coin in List<CoinComponent>.from(_activeCoins)) {
       // Off-Screen-Cleanup
@@ -682,10 +688,10 @@ class RocketGame extends FlameGame
       final double lx = cosA * wx - sinA * wy + anchorLx;
       final double ly = sinA * wx + cosA * wy + anchorLy;
 
-      // Kapsel-Test: Clamp auf die Längsachse (y: 0..height), dann Seitenabstand
-      final double clampedLy = ly.clamp(0.0, _rocket.size.y);
-      final double dx = lx - anchorLx;          // Abweichung von der Mittelachse
-      final double dy = ly - clampedLy;          // Abweichung entlang der Achse
+      // Kapsel-Test: Clamp auf Längsachse (top..bottom), dann Seitenabstand
+      final double clampedLy = ly.clamp(capsuleTop, capsuleBottom);
+      final double dx = lx - anchorLx;    // Abweichung von der Mittelachse
+      final double dy = ly - clampedLy;   // Abweichung entlang der Achse
       if (dx * dx + dy * dy <= coinCollectR * coinCollectR) {
         coin.collect();
         _activeCoins.remove(coin);

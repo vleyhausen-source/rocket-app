@@ -29,6 +29,21 @@ class GameConstants {
   /// Höhe der Rakete in Pixeln
   static const double kRocketHeight = 80.0;
 
+  // --- Raketen-Hitbox-Faktoren (relativ zu Sprite-Größe) ---
+  // Nasenspitze bis Rumpfende (ohne Düsenkappe und Flamme).
+  // Ablesen aus _renderBody: Nase y=0, body.bottom y=0.90*h, body.halfWidth = 0.22*w
+  //
+  //   kHitboxTopFactor    Kapsel-Oberkante   (0.00 = Nasenspitze)
+  //   kHitboxBottomFactor Kapsel-Unterkante  (0.90 = Rumpfende vor Düse)
+  //   kHitboxRadiusFactor Halbe Kapselbreite (0.22 = halbe Rumpfbreite bei x=0.28..0.72)
+  //
+  // Zum Nachjustieren nur diese drei Werte ändern.
+  // Render-Overlay (_renderHitboxDebug) und Kollisionstest (_checkCoinCollisions /
+  // _checkPowerupCollisions) lesen beide diese Konstanten.
+  static const double kHitboxTopFactor    = 0.00;
+  static const double kHitboxBottomFactor = 0.90;
+  static const double kHitboxRadiusFactor = 0.22;
+
   /// Maximale Neigung der Rakete in Grad
   static const double kMaxTiltDegrees = 45.0;
 
