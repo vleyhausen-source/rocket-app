@@ -426,9 +426,12 @@ class RocketGame extends FlameGame
 
     for (final r in results) {
       if (r.emitTelegraph) {
-        // Telegraph-Marker an der Spawn-Position erzeugen
+        // Telegraph-Marker: x = Spawn-X (Screen-Koordinate), y = Raketen-Mittelpunkt.
+        // So bleibt der Telegraph auf Augenhöhe der Rakete stehen, auch während
+        // die Kamera nach oben scrollt. Er fliegt NICHT durch das Bild.
+        final double telegraphY = _rocket.position.y - _rocket.size.y / 2;
         final telegraph = PowerupTelegraphComponent(
-          position: r.data.position.clone(),
+          position: Vector2(r.data.position.x, telegraphY),
           powerupColor: r.data.type.color,
         );
         _activeTelegraphs.add(telegraph);
@@ -503,11 +506,10 @@ class RocketGame extends FlameGame
     }
   }
 
-  // Telegraphs beim Kamerascrollen mitbewegen
+  // Telegraphs bewegen sich NICHT mit der Welt -- sie bleiben auf Raketen-Höhe stehen.
+  // Methode wird nicht mehr aufgerufen, bleibt der Vollständigkeit halber leer.
   void _scrollTelegraphs(double delta) {
-    for (final t in _activeTelegraphs) {
-      t.position.y += delta;
-    }
+    // Intentionally empty: telegraphs are pinned to rocket screen-Y, not world-space.
   }
 
   // =========================================================================

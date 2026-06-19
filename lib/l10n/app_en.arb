@@ -128,7 +128,7 @@
   "tutorialSectionControls": "Controls",
   "tutorialControlsText": "Touch & hold screen → thrust. Tap left/right → tilt. The further from center, the stronger the tilt.",
   "tutorialSectionCoins": "Coins & Powerups",
-  "tutorialCoinsText": "Collect coins to buy upgrades. Powerups: ⛽ +Fuel · 🧲 Coin Magnet · 🛡️ Flight Shield.",
+  "tutorialCoinsText": "Collect coins to buy upgrades. Powerups: ⛽ +Fuel · 🧲 Coin Magnet · 🛡️ Flight Shield. A glowing marker next to the rocket signals an incoming powerup 3 seconds early.",
   "tutorialSectionSpecial": "Booster & Autopilot",
   "tutorialSpecialText": "Single-use per flight – appear bottom left & right. Only visible after purchase in the shop."
 }

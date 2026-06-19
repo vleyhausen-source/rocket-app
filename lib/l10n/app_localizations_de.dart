@@ -286,7 +286,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get tutorialSectionCoins => 'Coins & Powerups';
 
   @override
-  String get tutorialCoinsText => 'Coins einsammeln für Upgrades im Shop. Powerups ⛽ +Treibstoff · 🧲 Münzmagnet · 🛡️ Flugschild.';
+  String get tutorialCoinsText => 'Coins einsammeln für Upgrades im Shop. Powerups ⛽ +Treibstoff · 🧲 Münzmagnet · 🛡️ Flugschild. Ein leuchtendes Symbol neben der Rakete kündigt ein Powerup 3 Sekunden vorher an.';
 
   @override
   String get tutorialSectionSpecial => 'Booster & Autopilot';

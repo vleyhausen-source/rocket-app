@@ -128,7 +128,7 @@
   "tutorialSectionControls": "Steuerung",
   "tutorialControlsText": "Bildschirm berühren & halten → Schub. Links/Rechts tippen → Neigung. Je weiter vom Bildschirm-Mittelpunkt, desto stärker.",
   "tutorialSectionCoins": "Coins & Powerups",
-  "tutorialCoinsText": "Coins einsammeln für Upgrades im Shop. Powerups ⛽ +Treibstoff · 🧲 Münzmagnet · 🛡️ Flugschild.",
+  "tutorialCoinsText": "Coins einsammeln für Upgrades im Shop. Powerups ⛽ +Treibstoff · 🧲 Münzmagnet · 🛡️ Flugschild. Ein leuchtendes Symbol neben der Rakete kündigt ein Powerup 3 Sekunden vorher an.",
   "tutorialSectionSpecial": "Booster & Autopilot",
   "tutorialSpecialText": "Einmalig pro Flug nutzbar – erscheinen unten links & rechts. Nur sichtbar nach Kauf im Shop."
 }
