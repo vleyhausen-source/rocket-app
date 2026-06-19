@@ -138,13 +138,6 @@ class RocketGame extends FlameGame
   Future<void> onLoad() async {
     await super.onLoad();
 
-    // Debug-Modus: Hitboxen visuell anzeigen (nur im Debug-Build)
-    // Deaktiviere für Release-Build (flutter run --release)
-    assert(() {
-      debugMode = true;
-      return true;
-    }());
-
     await _scoreManager.load();
     await _upgMgr.load();
     await _audioManager.initialize();
@@ -461,17 +454,26 @@ class RocketGame extends FlameGame
   // =========================================================================
 
   void _checkPowerupCollisions() {
-    // Capsule-Test: wie bei Coins -- minimale Distanz zum Liniensegment der Raketenachse
-    final double rocketBottom = _rocket.position.y;
-    final double rocketTop    = _rocket.position.y - _rocket.size.y;
-    final double rocketX      = _rocket.position.x;
-    // Powerups sind groesser als Coins: kRadius=16, + halbe Breite + Puffer
-    const double collectRadius = PowerupComponent.kRadius + 18.0;
+    // Rotationskorrekter Kapsel-Test (identisch zu _checkCoinCollisions)
+    final double rocketAngle = _rocket.angle;
+    final double cosA = cos(-rocketAngle);
+    final double sinA = sin(-rocketAngle);
+    final double anchorWx = _rocket.position.x;
+    final double anchorWy = _rocket.position.y;
+    final double anchorLx = _rocket.size.x * 0.5;
+    final double anchorLy = _rocket.size.y;
+    // Powerups groesser als Coins: kRadius=16, Kapsel etwas breiter
+    const double capsuleHalfW = 14.4;
+    const double collectRadius = PowerupComponent.kRadius + capsuleHalfW;
 
     for (final p in List<PowerupComponent>.from(_activePowerups)) {
-      final double clampedY = p.position.y.clamp(rocketTop, rocketBottom);
-      final double dx = p.position.x - rocketX;
-      final double dy = p.position.y - clampedY;
+      final double wx = p.position.x - anchorWx;
+      final double wy = p.position.y - anchorWy;
+      final double lx = cosA * wx - sinA * wy + anchorLx;
+      final double ly = sinA * wx + cosA * wy + anchorLy;
+      final double clampedLy = ly.clamp(0.0, _rocket.size.y);
+      final double dx = lx - anchorLx;
+      final double dy = ly - clampedLy;
       if (dx * dx + dy * dy <= collectRadius * collectRadius) {
         p.collect();
         _activePowerups.remove(p);
@@ -632,29 +634,59 @@ class RocketGame extends FlameGame
   }
 
   void _checkCoinCollisions() {
-    // Capsule-Test: minimale Distanz Coin→Raketenachse (Spitze bis Düse)
-    // Anchor = bottomCenter: position.y ist der unterste Punkt der Rakete
-    final double rocketBottom = _rocket.position.y;
-    final double rocketTop    = _rocket.position.y - _rocket.size.y;
-    final double rocketX      = _rocket.position.x;
-    // Effektivradius = Coin-Visuell-Radius * Hitbox-Faktor + halbe Raketenbreite (10px) + kleiner Puffer
-    // kCoinRadius=12, *1.35=16.2, + kRocketWidth/2*0.48=9.6, + 4 = ~30px total
-    const double collectRadius = CoinComponent.kCoinRadius * 1.35 + 13.6;
+    // Rotationskorrekter Kapsel-Test im lokalen Raketen-Raum.
+    //
+    // Problem bisher: achsenparallele Kapsel in World-Space ignorierte _rocket.angle.
+    // Fix: Coin-Position in den lokalen Raum der Rakete transformieren
+    //   (Verschiebung + inverse Rotation), dann Standard-Kapsel-Test.
+    //
+    // Rakete: anchor = bottomCenter
+    //   position = Weltkoordinaten des Ankerpunkts (unten-mitte)
+    //   size     = 40 x 80
+    //   Lokaler Ursprung: top-left der Bounding-Box
+    //   Ankerpunkt lokal: (w*0.5, h) = (20, 80)
+    //
+    // Kapsel-Achse lokal: von (w*0.5, 0) bis (w*0.5, h)
+    // Kapsel-Radius: halbe Raketenbreite * Faktor + Coin-Radius + Puffer
+
+    final double rocketAngle = _rocket.angle; // Radiant
+    final double cosA = cos(-rocketAngle);    // inverse Rotation
+    final double sinA = sin(-rocketAngle);
+
+    // Weltkoordinaten des Raketen-Ankers (bottomCenter)
+    final double anchorWx = _rocket.position.x;
+    final double anchorWy = _rocket.position.y;
+
+    // Lokaler Offset des Ankers innerhalb der Bounding-Box
+    final double anchorLx = _rocket.size.x * 0.5; // = 20
+    final double anchorLy = _rocket.size.y;        // = 80
+
+    // Kapsel-Parameter (lokal, achsenparallel)
+    const double capsuleHalfW = 14.4;       // kRocketWidth*0.36 -- halbe Breite der Kapsel
+    const double coinCollectR =
+        CoinComponent.kCoinRadius * 1.35 + capsuleHalfW;   // ~30.8px total
 
     for (final coin in List<CoinComponent>.from(_activeCoins)) {
-      // Off-Screen-Cleanup: Coins die unter den Bildschirm gescrollt sind entfernen
+      // Off-Screen-Cleanup
       if (coin.position.y > size.y + 40) {
         coin.removeFromParent();
         _activeCoins.remove(coin);
         continue;
       }
 
-      // Clamp: nächsten Punkt auf der Raketenachse zum Coin bestimmen
-      final double clampedY =
-          coin.position.y.clamp(rocketTop, rocketBottom);
-      final double dx = coin.position.x - rocketX;
-      final double dy = coin.position.y - clampedY;
-      if (dx * dx + dy * dy <= collectRadius * collectRadius) {
+      // Coin-Weltposition relativ zum Anker
+      final double wx = coin.position.x - anchorWx;
+      final double wy = coin.position.y - anchorWy;
+
+      // In lokalen Raum rotieren (inverse Rotation = -angle)
+      final double lx = cosA * wx - sinA * wy + anchorLx;
+      final double ly = sinA * wx + cosA * wy + anchorLy;
+
+      // Kapsel-Test: Clamp auf die Längsachse (y: 0..height), dann Seitenabstand
+      final double clampedLy = ly.clamp(0.0, _rocket.size.y);
+      final double dx = lx - anchorLx;          // Abweichung von der Mittelachse
+      final double dy = ly - clampedLy;          // Abweichung entlang der Achse
+      if (dx * dx + dy * dy <= coinCollectR * coinCollectR) {
         coin.collect();
         _activeCoins.remove(coin);
         _audioManager.playCoinCollect();

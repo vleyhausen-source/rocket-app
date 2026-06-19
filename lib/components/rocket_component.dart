@@ -1,6 +1,7 @@
 import 'dart:math';
 import 'package:flame/collisions.dart';
 import 'package:flame/components.dart';
+import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:rocket_app/game/game_constants.dart';
 
@@ -92,20 +93,9 @@ class RocketComponent extends PositionComponent with CollisionCallbacks {
       Paint()..color = const Color(0xFFFFEB3B), // Innere Flamme (gelb)
       Paint()..color = const Color(0xFFFFFFFF), // Kern (weiß)
     ];
-    // Polygon-Hitbox: passt zur visuellen Raketenform
-    // Schmal oben (Spitze), breiter in der Mitte (Cockpit/Rumpf), schmal unten (Düse)
-    // Koordinaten relativ zu size (w x h), Anchor = Mitte-unten (bottomCenter)
-    final double w = size.x;
-    final double h = size.y;
-    add(PolygonHitbox([
-      Vector2(w * 0.50, 0.0),          // Nasenspitze (Mitte oben)
-      Vector2(w * 0.72, h * 0.30),     // Nasenschulter rechts
-      Vector2(w * 0.72, h * 0.85),     // Rumpf rechts unten
-      Vector2(w * 0.55, h * 1.00),     // Düse rechts
-      Vector2(w * 0.45, h * 1.00),     // Düse links
-      Vector2(w * 0.28, h * 0.85),     // Rumpf links unten
-      Vector2(w * 0.28, h * 0.30),     // Nasenschulter links
-    ]));
+    // Polygon-Hitbox entfernt: Kollisionstest erfolgt manuell in rocket_game.dart
+    // (Coin/Powerup-Position wird in lokalen Raketen-Raum transformiert,
+    //  dann achsenparalleler Kapsel-Test -- kein Anchor-Drift-Problem)
   }
 
   /// Setzt die Rakete auf Startposition zurück
@@ -229,6 +219,38 @@ class RocketComponent extends PositionComponent with CollisionCallbacks {
 
     // Raketen-Rumpf
     _renderBody(canvas);
+
+    // Debug-Overlay: Kapsel-Hitbox direkt im Lokalsystem zeichnen
+    // Canvas ist hier bereits durch Flame rotiert + verschoben →
+    // kein Anchor-Drift möglich, Overlay liegt IMMER deckungsgleich auf dem Sprite
+    if (kDebugMode) {
+      _renderHitboxDebug(canvas);
+    }
+  }
+
+  /// Kapsel-Hitbox als Overlay zeichnen (nur Debug).
+  /// Koordinaten identisch mit dem Capsule-Test in rocket_game.dart:
+  ///   halbe Breite = kRocketWidth * 0.36 = ~14.4px
+  ///   Top = 0 (Nasenspitze), Bottom = size.y (Düse)
+  ///   Anchor = bottomCenter → lokale y-Achse zeigt nach unten
+  void _renderHitboxDebug(Canvas canvas) {
+    final double w = size.x;
+    final double h = size.y;
+    // Kapselbreite entspricht dem collectRadius-Halfwidth im Kollisionstest
+    const double hw = GameConstants.kRocketWidth * 0.36; // ~14.4px
+    final Paint debugPaint = Paint()
+      ..color = const Color(0x8000FF88)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.5;
+    // Kapsel = Rechteck + zwei Halbkreise an Top und Bottom
+    final Rect rect = Rect.fromLTRB(
+      w * 0.5 - hw, 0,
+      w * 0.5 + hw, h,
+    );
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(rect, const Radius.circular(hw)),
+      debugPaint,
+    );
   }
 
   /// Raketenkörper zeichnen (detailliertes Sprite)
