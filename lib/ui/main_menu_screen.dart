@@ -4,6 +4,7 @@ import 'package:rocket_app/l10n/l10n.dart';
 import 'package:rocket_app/managers/score_manager.dart';
 import 'package:rocket_app/managers/streak_manager.dart';
 import 'package:rocket_app/managers/upgrade_manager.dart';
+import 'package:rocket_app/services/games_services_controller.dart';
 import 'package:rocket_app/ui/game_screen.dart';
 import 'package:rocket_app/ui/shop_screen.dart';
 import 'package:rocket_app/ui/streak_dialog.dart';
@@ -462,6 +463,37 @@ class _ButtonSection extends StatelessWidget {
               ),
             ),
           ),
+
+          // BESTENLISTE-Button (nur wenn bei Play Games angemeldet)
+          if (GamesServicesController.instance.isSignedIn) ...[
+            const SizedBox(height: 10),
+            SizedBox(
+              width: double.infinity,
+              height: 48,
+              child: OutlinedButton.icon(
+                onPressed: () =>
+                    GamesServicesController.instance.showLeaderboard(),
+                icon: const Icon(Icons.leaderboard, size: 20),
+                label: const Text(
+                  'BESTENLISTE',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 3,
+                    fontFamily: 'monospace',
+                  ),
+                ),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: Colors.lightBlueAccent,
+                  side: const BorderSide(
+                      color: Colors.lightBlueAccent, width: 1.0),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                ),
+              ),
+            ),
+          ],
         ],
       ),
     );

@@ -4,6 +4,7 @@ import 'package:rocket_app/game/rocket_game.dart';
 import 'package:rocket_app/l10n/l10n.dart';
 import 'package:rocket_app/managers/score_manager.dart';
 import 'package:rocket_app/services/ad_service.dart';
+import 'package:rocket_app/services/games_services_controller.dart';
 
 // ==========================================================================
 // HUD (Head-Up Display)
@@ -733,6 +734,28 @@ class _CrashOverlayWidgetState extends State<CrashOverlayWidget> {
                 ),
               ],
             ),
+
+            // --- Bestenliste-Button (nur wenn bei Play Games angemeldet) ---
+            if (GamesServicesController.instance.isSignedIn) ...[ 
+              const SizedBox(height: 10),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: () =>
+                      GamesServicesController.instance.showLeaderboard(),
+                  icon: const Icon(Icons.leaderboard, size: 18,
+                      color: Colors.lightBlueAccent),
+                  label: const Text('Bestenliste',
+                      style: TextStyle(
+                          color: Colors.lightBlueAccent,
+                          fontSize: 13,
+                          letterSpacing: 1.5)),
+                  style: OutlinedButton.styleFrom(
+                      side: const BorderSide(color: Colors.lightBlueAccent),
+                      padding: const EdgeInsets.symmetric(vertical: 10)),
+                ),
+              ),
+            ],
 
             // --- Rewarded-Ad-Buttons: nur anzeigen wenn Ad bereit ---
             if (adReady) ...[

@@ -19,6 +19,7 @@ import 'package:rocket_app/managers/upgrade_manager.dart';
 import 'package:rocket_app/managers/milestone_manager.dart';
 import 'package:rocket_app/components/powerup_component.dart';
 import 'package:rocket_app/services/ad_service.dart';
+import 'package:rocket_app/services/games_services_controller.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// Spielzustand-Enum für den gesamten Game-Loop
@@ -842,6 +843,11 @@ class RocketGame extends FlameGame
 
     await _audioManager.playCrash();
     await _scoreManager.endRun();
+
+    // Score an Play Games Bestenliste senden (im Hintergrund, kein Await nötig)
+    GamesServicesController.instance
+        .submitHighscore(_scoreManager.currentScore)
+        .ignore();
 
     // Absturz-Zaehler erhoehen und persistieren
     _crashCount++;

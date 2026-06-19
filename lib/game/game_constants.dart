@@ -76,4 +76,9 @@ class GameConstants {
   /// 8px/m: 1 Bildschirmhöhe (800px) ≈ 100m.
   /// Ohne Upgrades ~340m, max. Upgrades >>15.000m erreichbar.
   static const double kPixelsPerMeter = 8.0;
+
+  // --- Google Play Games ---
+  /// Leaderboard-ID für den Highscore (Android).
+  /// iOS-Pendant: bei Bedarf als kLeaderboardHighscoreIOS ergänzen.
+  static const String kLeaderboardHighscore = 'CgkIyam-hqwMEAIQAg';
 }

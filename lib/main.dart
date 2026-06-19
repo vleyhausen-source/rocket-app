@@ -7,6 +7,7 @@ import 'package:rocket_app/ui/theme.dart';
 import 'package:rocket_app/services/ad_service.dart';
 import 'package:rocket_app/services/consent_service.dart';
 import 'package:rocket_app/services/security_service.dart';
+import 'package:rocket_app/services/games_services_controller.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -65,6 +66,10 @@ void main() async {
       child: RocketApp(showRootWarning: showRootWarning),
     ),
   );
+
+  // Play Games: stille Anmeldung NACH runApp() im Hintergrund.
+  // Nicht awaiten -- App soll sofort starten, Sign-in läuft asynchron.
+  GamesServicesController.instance.signInSilently().ignore();
 }
 
 /// Initialisiert Consent und AdMob – separat aus main() für Timeout-Wrapping.
