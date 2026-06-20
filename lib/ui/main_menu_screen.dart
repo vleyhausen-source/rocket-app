@@ -235,11 +235,30 @@ class _MainMenuScreenState extends State<MainMenuScreen>
 
                 // Version
                 const Padding(
-                  padding: EdgeInsets.only(bottom: 12),
+                  padding: EdgeInsets.only(bottom: 4),
                   child: Text(
                     'v1.0.0',
                     style: TextStyle(
                         color: RocketTheme.textMuted, fontSize: 11),
+                  ),
+                ),
+
+                // --- DEBUG: Play Games Login-Status (temporär für Diagnose) ---
+                // Wird entfernt sobald Login-Problem gefunden und gefixt ist.
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: ValueListenableBuilder<String>(
+                    valueListenable:
+                        GamesServicesController.instance.debugStatus,
+                    builder: (_, status, __) => Text(
+                      status,
+                      style: const TextStyle(
+                        color: Colors.orangeAccent,
+                        fontSize: 10,
+                        fontFamily: 'monospace',
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
                   ),
                 ),
               ],

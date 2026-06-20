@@ -68,8 +68,9 @@ void main() async {
   );
 
   // Play Games: stille Anmeldung NACH runApp() im Hintergrund.
-  // Nicht awaiten -- App soll sofort starten, Sign-in läuft asynchron.
-  GamesServicesController.instance.signInSilently().ignore();
+  // Ergebnis wird per debugPrint + debugStatus-Notifier im UI sichtbar gemacht
+  // (temporär für Login-Diagnose -- kein .ignore() mehr).
+  GamesServicesController.instance.signInSilently();
 }
 
 /// Initialisiert Consent und AdMob – separat aus main() für Timeout-Wrapping.
