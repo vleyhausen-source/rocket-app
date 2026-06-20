@@ -976,11 +976,6 @@ class RocketGame extends FlameGame
     _isNewHighscoreDuringFlight = false;
   }
 
-  /// Setzt den Meteoriten-Warn-Flag zurück (nach Ablauf der Banner-Animation).
-  void clearMeteorWarningBanner() {
-    _meteorWarningTriggered = false;
-  }
-
   // =========================================================================
   // SPIEL STARTEN / NEUSTARTEN
   // =========================================================================

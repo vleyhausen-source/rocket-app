@@ -26,8 +26,10 @@ class _GameScreenState extends State<GameScreen> {
   final List<MilestoneDefinition> _pendingBanners = [];
   MilestoneDefinition? _activeBanner;
 
-  // Meteoriten-Warnung: einmalig pro Lauf
+  // Meteoriten-Warnung: max 2x pro Lauf anzeigen
   bool _showMeteorWarning = false;
+  int _meteorWarningShownCount = 0;
+  static const int _kMeteorWarningMaxShows = 2;
 
   @override
   void initState() {
@@ -76,7 +78,33 @@ class _GameScreenState extends State<GameScreen> {
     if (!mounted) return;
     // Callback kommt aus dem Flame update()-Loop → postFrameCallback
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) setState(() => _showMeteorWarning = true);
+      if (!mounted) return;
+      // Nur anzeigen wenn noch nicht 2x gezeigt und gerade kein Banner läuft
+      if (_meteorWarningShownCount < _kMeteorWarningMaxShows && !_showMeteorWarning) {
+        setState(() {
+          _showMeteorWarning = true;
+          _meteorWarningShownCount++;
+        });
+      }
+    });
+  }
+
+  /// Nach Ablauf eines Meteor-Banners: direkt zweites einplanen wenn noch nicht 2x gezeigt.
+  void _onMeteorWarningDone() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      setState(() => _showMeteorWarning = false);
+      // Zweiten Durchlauf sofort starten wenn noch nicht ausgeschöpft
+      if (_meteorWarningShownCount < _kMeteorWarningMaxShows) {
+        Future.delayed(const Duration(milliseconds: 100), () {
+          if (mounted && _meteorWarningShownCount < _kMeteorWarningMaxShows) {
+            setState(() {
+              _showMeteorWarning = true;
+              _meteorWarningShownCount++;
+            });
+          }
+        });
+      }
     });
   }
 
@@ -173,18 +201,11 @@ class _GameScreenState extends State<GameScreen> {
               },
             ),
 
-          // Meteoriten-Warnung (einmalig bei kMeteorWarningHeight, verschwindet nach 2.75s)
+          // Meteoriten-Warnung (max 2x pro Lauf, verschwindet nach 2.75s)
           if (_showMeteorWarning)
             MeteorWarningBanner(
-              key: const ValueKey('meteor_warning_banner'),
-              onDone: () {
-                WidgetsBinding.instance.addPostFrameCallback((_) {
-                  if (mounted) {
-                    _game.clearMeteorWarningBanner();
-                    setState(() => _showMeteorWarning = false);
-                  }
-                });
-              },
+              key: ValueKey('meteor_warning_banner_$_meteorWarningShownCount'),
+              onDone: _onMeteorWarningDone,
             ),
         ],
       ),
