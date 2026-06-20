@@ -67,6 +67,11 @@ class RocketGame extends FlameGame
   void Function(MilestoneDefinition)? onMilestone;
   bool _isNewHighscoreDuringFlight = false;
 
+  // --- Meteoriten-Warnung ---
+  /// Callback: wird einmalig ausgelöst wenn kMeteorWarningHeight überschritten
+  VoidCallback? onMeteorWarning;
+  bool _meteorWarningTriggered = false;
+
   // --- Zustand ---
   GamePhase phase = GamePhase.menu;
   AtmosphereZone _lastZone = AtmosphereZones.zone1Ground;
@@ -124,7 +129,8 @@ class RocketGame extends FlameGame
   double get magnetTimeLeft => _magnetTimer;
   bool   get magnetActive    => _magnetTimer > 0;
   int    get flightShields   => _flightShields;
-  bool   get isNewHighscoreDuringFlight => _isNewHighscoreDuringFlight;
+  bool get isNewHighscoreDuringFlight => _isNewHighscoreDuringFlight;
+  bool get meteorWarningActive => _meteorWarningTriggered;
 
   // Spezial-Upgrade-Getter für HUD
   bool get boosterAvailable =>
@@ -409,6 +415,13 @@ class RocketGame extends FlameGame
     if (newHS && !_isNewHighscoreDuringFlight) {
       _isNewHighscoreDuringFlight = true;
       onStateChange?.call();
+    }
+
+    // Meteoriten-Warnung: einmalig wenn Schwellenwert überschritten
+    if (!_meteorWarningTriggered &&
+        altM >= GameConstants.kMeteorWarningHeight) {
+      _meteorWarningTriggered = true;
+      onMeteorWarning?.call();
     }
   }
 
@@ -963,6 +976,11 @@ class RocketGame extends FlameGame
     _isNewHighscoreDuringFlight = false;
   }
 
+  /// Setzt den Meteoriten-Warn-Flag zurück (nach Ablauf der Banner-Animation).
+  void clearMeteorWarningBanner() {
+    _meteorWarningTriggered = false;
+  }
+
   // =========================================================================
   // SPIEL STARTEN / NEUSTARTEN
   // =========================================================================
@@ -989,8 +1007,7 @@ class RocketGame extends FlameGame
     _flightShields = 0;
     _flightShieldCooldown = 0.0;
     _isNewHighscoreDuringFlight = false;
-
-    // Meteore zuruecksetzen
+    _meteorWarningTriggered = false;
     for (final m in List<MeteorComponent>.from(_activeMeteors)) {
       m.removeFromParent();
     }

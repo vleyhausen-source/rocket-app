@@ -81,4 +81,9 @@ class GameConstants {
   /// Leaderboard-ID für den Highscore (Android).
   /// iOS-Pendant: bei Bedarf als kLeaderboardHighscoreIOS ergänzen.
   static const String kLeaderboardHighscore = 'CgkIyam-hqwMEAIQAg';
+
+  // --- Meteoriten-Warnung ---
+  /// Höhenschwellenwert für die Meteoriten-Warnung in Metern.
+  /// TODO vor Release wieder auf 10000 setzen (aktuell Testwert 200).
+  static const double kMeteorWarningHeight = 200;
 }

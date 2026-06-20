@@ -273,3 +273,138 @@ class _NewRecordBannerState extends State<NewRecordBanner>
     );
   }
 }
+
+// ==========================================================================
+// METEORITEN-WARNUNG
+// ==========================================================================
+
+/// Auffällige Meteoriten-Warnung -- erscheint zentriert/oben, bleibt 2.5s,
+/// blendet sanft ein und aus. Blockiert das Gameplay NICHT (IgnorePointer).
+class MeteorWarningBanner extends StatefulWidget {
+  final VoidCallback? onDone;
+
+  const MeteorWarningBanner({super.key, this.onDone});
+
+  @override
+  State<MeteorWarningBanner> createState() => _MeteorWarningBannerState();
+}
+
+class _MeteorWarningBannerState extends State<MeteorWarningBanner>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _ctrl;
+  late final Animation<double> _fade;
+  late final Animation<double> _scale;
+
+  @override
+  void initState() {
+    super.initState();
+    // 300ms einblenden, 2000ms halten, 450ms ausblenden = 2750ms gesamt
+    _ctrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 2750),
+    );
+
+    _fade = TweenSequence<double>([
+      TweenSequenceItem(
+        tween: Tween(begin: 0.0, end: 1.0)
+            .chain(CurveTween(curve: Curves.easeOut)),
+        weight: 10.9, // 300/2750
+      ),
+      TweenSequenceItem(tween: ConstantTween(1.0), weight: 72.7), // 2000/2750
+      TweenSequenceItem(
+        tween: Tween(begin: 1.0, end: 0.0)
+            .chain(CurveTween(curve: Curves.easeIn)),
+        weight: 16.4, // 450/2750
+      ),
+    ]).animate(_ctrl);
+
+    // Leichtes Scale-In für mehr Impact (1.15 → 1.0 beim Einblenden)
+    _scale = TweenSequence<double>([
+      TweenSequenceItem(
+        tween: Tween(begin: 1.15, end: 1.0)
+            .chain(CurveTween(curve: Curves.easeOutCubic)),
+        weight: 10.9,
+      ),
+      TweenSequenceItem(tween: ConstantTween(1.0), weight: 89.1),
+    ]).animate(_ctrl);
+
+    _ctrl.forward().then((_) => widget.onDone?.call());
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // Zentriert im oberen Bereich -- bewusst auffällig (Warnung, kein dezenter Banner)
+    return Positioned(
+      top: 0,
+      left: 0,
+      right: 0,
+      child: IgnorePointer(
+        child: FadeTransition(
+          opacity: _fade,
+          child: ScaleTransition(
+            scale: _scale,
+            child: SafeArea(
+              bottom: false,
+              child: Padding(
+                padding: const EdgeInsets.only(top: 16),
+                child: Center(
+                  child: Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 20),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 22, vertical: 14),
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF7A1500), Color(0xFFCC2200)],
+                      ),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                        color: Colors.orangeAccent.withValues(alpha: 0.85),
+                        width: 2,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.red.withValues(alpha: 0.55),
+                          blurRadius: 28,
+                          spreadRadius: 4,
+                        ),
+                      ],
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.warning_amber_rounded,
+                            color: Colors.orangeAccent, size: 28),
+                        SizedBox(width: 12),
+                        Flexible(
+                          child: Text(
+                            'Achtung Meteoriten',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 17,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: 1.5,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        SizedBox(width: 12),
+                        Icon(Icons.warning_amber_rounded,
+                            color: Colors.orangeAccent, size: 28),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}

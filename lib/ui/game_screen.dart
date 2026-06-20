@@ -26,6 +26,9 @@ class _GameScreenState extends State<GameScreen> {
   final List<MilestoneDefinition> _pendingBanners = [];
   MilestoneDefinition? _activeBanner;
 
+  // Meteoriten-Warnung: einmalig pro Lauf
+  bool _showMeteorWarning = false;
+
   @override
   void initState() {
     super.initState();
@@ -33,6 +36,7 @@ class _GameScreenState extends State<GameScreen> {
     _game.onStateChange = _refresh;
     _game.onCrash = _refresh;
     _game.onMilestone = _onMilestone;
+    _game.onMeteorWarning = _onMeteorWarning;
 
     // Streak nach erstem Frame prüfen (Context nötig für Dialog)
     WidgetsBinding.instance.addPostFrameCallback((_) => _checkStreak());
@@ -66,6 +70,14 @@ class _GameScreenState extends State<GameScreen> {
       return;
     }
     _activeBanner = _pendingBanners.removeAt(0);
+  }
+
+  void _onMeteorWarning() {
+    if (!mounted) return;
+    // Callback kommt aus dem Flame update()-Loop → postFrameCallback
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) setState(() => _showMeteorWarning = true);
+    });
   }
 
   Future<void> _checkStreak() async {
@@ -156,6 +168,20 @@ class _GameScreenState extends State<GameScreen> {
                   if (mounted) {
                     _game.clearNewHighscoreBanner();
                     setState(() {});
+                  }
+                });
+              },
+            ),
+
+          // Meteoriten-Warnung (einmalig bei kMeteorWarningHeight, verschwindet nach 2.75s)
+          if (_showMeteorWarning)
+            MeteorWarningBanner(
+              key: const ValueKey('meteor_warning_banner'),
+              onDone: () {
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  if (mounted) {
+                    _game.clearMeteorWarningBanner();
+                    setState(() => _showMeteorWarning = false);
                   }
                 });
               },
