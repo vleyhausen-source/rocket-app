@@ -36,9 +36,24 @@ class _MainMenuScreenState extends State<MainMenuScreen>
   final ScoreManager _scoreMgr = ScoreManager.instance;
   int _streakDay = 0;
 
+  // Eigenes Flag für Play-Games-Login -- wird per ChangeNotifier aktualisiert.
+  // GamesServices.isSignedIn ist unter GPGS v2 unzuverlässig (liefert false
+  // auch wenn der Login tatsächlich geklappt hat).
+  bool _gpgsSignedIn = false;
+
+  void _onGpgsChange() {
+    if (mounted) {
+      setState(() {
+        _gpgsSignedIn = GamesServicesController.instance.isSignedIn;
+      });
+    }
+  }
+
   @override
   void initState() {
     super.initState();
+    // Auf Login-Änderungen des Controllers horchen
+    GamesServicesController.instance.addListener(_onGpgsChange);
 
     // Logo-Einblend-Animation
     _logoCtrl = AnimationController(
@@ -141,6 +156,7 @@ class _MainMenuScreenState extends State<MainMenuScreen>
 
   @override
   void dispose() {
+    GamesServicesController.instance.removeListener(_onGpgsChange);
     _logoCtrl.dispose();
     _starsCtrl.dispose();
     _pulseCtrl.dispose();
@@ -228,6 +244,7 @@ class _MainMenuScreenState extends State<MainMenuScreen>
                     onStart: _startGame,
                     onShop: _openShop,
                     onTutorial: _openTutorial,
+                    isGpgsSignedIn: _gpgsSignedIn,
                   ),
                 ),
 
@@ -235,30 +252,11 @@ class _MainMenuScreenState extends State<MainMenuScreen>
 
                 // Version
                 const Padding(
-                  padding: EdgeInsets.only(bottom: 4),
+                  padding: EdgeInsets.only(bottom: 12),
                   child: Text(
                     'v1.0.0',
                     style: TextStyle(
                         color: RocketTheme.textMuted, fontSize: 11),
-                  ),
-                ),
-
-                // --- DEBUG: Play Games Login-Status (temporär für Diagnose) ---
-                // Wird entfernt sobald Login-Problem gefunden und gefixt ist.
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
-                  child: ValueListenableBuilder<String>(
-                    valueListenable:
-                        GamesServicesController.instance.debugStatus,
-                    builder: (_, status, __) => Text(
-                      status,
-                      style: const TextStyle(
-                        color: Colors.orangeAccent,
-                        fontSize: 10,
-                        fontFamily: 'monospace',
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
                   ),
                 ),
               ],
@@ -415,12 +413,15 @@ class _ButtonSection extends StatelessWidget {
   final VoidCallback onStart;
   final VoidCallback onShop;
   final VoidCallback onTutorial;
+  // Eigenes Flag -- nicht GamesServices.isSignedIn (unter GPGS v2 unzuverlässig)
+  final bool isGpgsSignedIn;
 
   const _ButtonSection({
     required this.pulseAnim,
     required this.onStart,
     required this.onShop,
     required this.onTutorial,
+    required this.isGpgsSignedIn,
   });
 
   @override
@@ -499,7 +500,7 @@ class _ButtonSection extends StatelessWidget {
           ),
 
           // BESTENLISTE-Button (nur wenn bei Play Games angemeldet)
-          if (GamesServicesController.instance.isSignedIn) ...[
+          if (isGpgsSignedIn) ...[
             const SizedBox(height: 10),
             SizedBox(
               width: double.infinity,

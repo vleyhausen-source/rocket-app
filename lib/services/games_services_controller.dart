@@ -11,46 +11,44 @@ import 'package:rocket_app/game/game_constants.dart';
 ///   2. [submitHighscore] bei Game Over mit dem finalen Score aufrufen.
 ///   3. [showLeaderboard] über den "Bestenliste"-Button aufrufen.
 ///
+/// Warum ChangeNotifier:
+///   signIn() läuft asynchron NACH runApp(). Das Hauptmenü ist zu diesem
+///   Zeitpunkt bereits gebaut. Ohne Notification würde isSignedIn immer false
+///   bleiben -- die Buttons erscheinen nie, obwohl der Login geklappt hat.
+///
 /// iOS-Felder (iOSLeaderboardID) sind als leere Strings vorbereitet --
 /// bei Bedarf [GameConstants.kLeaderboardHighscoreIOS] ergänzen.
-class GamesServicesController {
+class GamesServicesController extends ChangeNotifier {
   GamesServicesController._();
   static final GamesServicesController instance = GamesServicesController._();
 
   bool _signedIn = false;
 
   /// Ob der Spieler aktuell bei Play Games angemeldet ist.
+  /// Wird auf true gesetzt sobald signIn() ohne Exception durchläuft --
+  /// unabhängig vom Rückgabewert (GamesServices.isSignedIn ist unter
+  /// Play Games Services v2 unzuverlässig).
   bool get isSignedIn => _signedIn;
-
-  // --- DEBUG: Zeige-Text für das Hauptmenü (temporär für Login-Diagnose) ---
-  // Wird per ValueNotifier aktualisiert, damit das UI live reagiert.
-  // Nach erfolgreicher Diagnose wieder entfernen.
-  final ValueNotifier<String> debugStatus =
-      ValueNotifier<String>('GPGS: ausstehend...');
 
   /// Stille Anmeldung im Hintergrund (nach runApp aufrufen, nicht davor).
   /// Gibt true zurück wenn erfolgreich, false bei jedem Fehler.
   Future<bool> signInSilently() async {
     debugPrint('[GPGS] signInSilently() gestartet...');
-    debugStatus.value = 'GPGS: anmelden...';
     try {
       final result = await GameAuth.signIn();
-      // null = Erfolg bei games_services 5.x; jeder andere String = Fehlercode
-      _signedIn = result == null;
-      debugPrint('[GPGS] GameAuth.signIn() Ergebnis: $result');
-      debugPrint('[GPGS] isSignedIn nach Versuch: $_signedIn');
-      // Debug-Status live aktualisieren
-      debugStatus.value = 'GPGS: signedIn=$_signedIn / ${result ?? "OK"}';
-      return _signedIn;
+      // Kein Exception = Login erfolgreich.
+      // result kann auch bei Erfolg ein nicht-null String sein (v2-Quirk) --
+      // deshalb nicht auf null prüfen, sondern Exception als Kriterium nutzen.
+      _signedIn = true;
+      debugPrint('[GPGS] GameAuth.signIn() Ergebnis: $result -- Login gilt als erfolgreich');
+      notifyListeners(); // Hauptmenü neu bauen lassen
+      return true;
     } catch (e, st) {
       // Play Games nicht verfügbar oder abgelehnt -- kein Absturz
       _signedIn = false;
       debugPrint('[GPGS] EXCEPTION in signInSilently: $e');
       debugPrint('[GPGS] StackTrace: $st');
-      debugPrint('[GPGS] isSignedIn nach Fehler: $_signedIn');
-      // Kurzen Fehlercode extrahieren (erster Satz reicht für den Debug-Text)
-      final shortErr = e.toString().split('\n').first;
-      debugStatus.value = 'GPGS: signedIn=false / $shortErr';
+      notifyListeners();
       return false;
     }
   }
@@ -70,6 +68,7 @@ class GamesServicesController {
       );
       return true;
     } catch (e) {
+      debugPrint('[GPGS] submitHighscore Fehler: $e');
       return false;
     }
   }
@@ -83,7 +82,7 @@ class GamesServicesController {
         iOSLeaderboardID: '',     // iOS: bei Bedarf GameConstants.kLeaderboardHighscoreIOS
       );
     } catch (e) {
-      // Screen konnte nicht geöffnet werden -- stumm ignorieren
+      debugPrint('[GPGS] showLeaderboard Fehler: $e');
     }
   }
 }
