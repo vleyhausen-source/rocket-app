@@ -1,5 +1,6 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:rocket_app/l10n/l10n.dart';
 import 'package:rocket_app/managers/score_manager.dart';
 import 'package:rocket_app/managers/streak_manager.dart';
@@ -35,6 +36,7 @@ class _MainMenuScreenState extends State<MainMenuScreen>
 
   final ScoreManager _scoreMgr = ScoreManager.instance;
   int _streakDay = 0;
+  String _appVersion = '';
 
   // Eigenes Flag für Play-Games-Login -- wird per ChangeNotifier aktualisiert.
   // GamesServices.isSignedIn ist unter GPGS v2 unzuverlässig (liefert false
@@ -96,6 +98,17 @@ class _MainMenuScreenState extends State<MainMenuScreen>
     }
 
     _loadData();
+    _loadVersion();
+  }
+
+  /// App-Version dynamisch auslesen (package_info_plus).
+  Future<void> _loadVersion() async {
+    try {
+      final info = await PackageInfo.fromPlatform();
+      if (mounted) setState(() => _appVersion = info.version);
+    } catch (_) {
+      // Fallback: leer lassen, kein Absturz
+    }
   }
 
   /// Root-Warnung als nicht-blockierender Dialog anzeigen.
@@ -250,15 +263,16 @@ class _MainMenuScreenState extends State<MainMenuScreen>
 
                 const Spacer(flex: 3),
 
-                // Version
-                const Padding(
-                  padding: EdgeInsets.only(bottom: 12),
-                  child: Text(
-                    'v1.0.0',
-                    style: TextStyle(
-                        color: RocketTheme.textMuted, fontSize: 11),
+                // Version (dynamisch aus package_info_plus)
+                if (_appVersion.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: Text(
+                      'v$_appVersion',
+                      style: const TextStyle(
+                          color: RocketTheme.textMuted, fontSize: 11),
+                    ),
                   ),
-                ),
               ],
             ),
           ),
