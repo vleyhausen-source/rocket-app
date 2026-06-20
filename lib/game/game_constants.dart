@@ -84,6 +84,5 @@ class GameConstants {
 
   // --- Meteoriten-Warnung ---
   /// Höhenschwellenwert für die Meteoriten-Warnung in Metern.
-  /// TODO vor Release wieder auf 10000 setzen (aktuell Testwert 200).
-  static const double kMeteorWarningHeight = 200;
+  static const double kMeteorWarningHeight = 10500;
 }
