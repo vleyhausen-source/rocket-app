@@ -157,7 +157,8 @@ class PowerupSpawner {
 
   /// Gibt neue Spawn-Aufträge zurück.
   /// [altitudeM] = aktuelle Höhe, [screenWidth] = Bildschirmbreite,
-  /// [pixelsPerMeter] = Umrechnungsfaktor.
+  /// [pixelsPerMeter] = Umrechnungsfaktor,
+  /// [cameraSpeedMs] = aktuelle Aufstiegsgeschwindigkeit in m/s (0 = unbekannt).
   ///
   /// Rückgabe: Liste von [PlannedSpawnResult] mit Feldern:
   ///   - [data]: SpawnData (Position, Typ)
@@ -165,16 +166,18 @@ class PowerupSpawner {
   ///   - [telegraphNow]: true => Telegraph sofort hinzufügen
   ///   - [spawnNow]: true => echtes Powerup sofort hinzufügen (Telegraph abgelaufen)
   List<PlannedSpawnResult> tick(
-      double altitudeM, double screenWidth, double pixelsPerMeter) {
+      double altitudeM, double screenWidth, double pixelsPerMeter,
+      [double cameraSpeedMs = 0.0]) {
     final List<PlannedSpawnResult> result = [];
 
-    // --- Neue Spawns 3s im Voraus einplanen ---
-    // kTelegraphLeadM = Meter die 3s entsprechen bei durchschnittlicher Aufstiegsgeschwindigkeit.
-    // Wir planen wenn der Spawn-Zeitpunkt innerhalb des Telegraph-Vorlaufs liegt.
-    // Wir berechnen den Meter-Vorlauf dynamisch als 3s × (aktuell zurückgelegte m/s).
-    // Da wir keine Geschwindigkeit kennen, nehmen wir einen festen konservativen Wert:
-    // ~150 m/s Aufstieg => 3s = 450m Vorlauf. Etwas großzügig = 500m.
-    const double kTelegraphLeadM = 500.0;
+    // --- Telegraph-Vorlauf in Metern: exakt 3s bei aktueller Geschwindigkeit ---
+    // Minimum 80m (Fallback wenn Geschwindigkeit 0 oder sehr niedrig),
+    // Maximum 2000m (Sicherheitskap gegen extrem hohe Speeds).
+    const double kTelegraphLeadSec = 3.0;
+    const double kTelegraphLeadMinM = 80.0;
+    const double kTelegraphLeadMaxM = 2000.0;
+    final double kTelegraphLeadM = (cameraSpeedMs * kTelegraphLeadSec)
+        .clamp(kTelegraphLeadMinM, kTelegraphLeadMaxM);
 
     for (final type in PowerupType.values) {
       final double spawnAlt = _nextSpawnAltM[type] ?? 9999;

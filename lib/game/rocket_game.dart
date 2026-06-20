@@ -80,6 +80,10 @@ class RocketGame extends FlameGame
   /// Wie weit die Welt nach oben gescrollt wurde (in Pixeln, nur nach oben)
   double _cameraWorldY = 0.0;
 
+  /// Aktuelle Aufstiegsgeschwindigkeit der Kamera in m/s (geglättet, nur > 0)
+  /// Wird von _updateCamera() pro Frame gemessen und für Telegraph-Lead genutzt.
+  double _cameraSpeedMs = 0.0;
+
   /// Gewuenschte Raketen-Bildschirm-Y-Position (Rakete bleibt hier auf dem Screen)
   static const double _kRocketScreenY = 0.70; // 70% von oben = unteres Drittel
 
@@ -285,11 +289,23 @@ class RocketGame extends FlameGame
       final double scrollDelta = targetRocketScreenY - _rocket.position.y;
       _cameraWorldY += scrollDelta;
 
+      // Aktuelle Aufstiegsgeschwindigkeit messen (px/frame → m/s)
+      // dt > 0 absichern damit keine Division durch Null entsteht
+      if (dt > 0) {
+        final double measuredMs =
+            (scrollDelta / dt) / ScoreConstants.kPixelsPerMeter;
+        // Exponential-Glättung (α=0.2): verhindert Ausreißer durch kurze Frames
+        _cameraSpeedMs = _cameraSpeedMs * 0.8 + measuredMs * 0.2;
+      }
+
       // Rakete auf Fixpunkt zuruecksetzen (visuell bleibt sie stehen)
       _rocket.position.y = targetRocketScreenY;
 
       // Alle anderen Objekte um scrollDelta nach unten verschieben (Welt scrollt)
       _scrollWorldObjects(scrollDelta);
+    } else {
+      // Rakete steigt nicht mehr -- Geschwindigkeit gegen 0 abklingen lassen
+      _cameraSpeedMs = _cameraSpeedMs * 0.8;
     }
   }
 
@@ -435,6 +451,7 @@ class RocketGame extends FlameGame
       altM,
       size.x,
       ScoreConstants.kPixelsPerMeter,
+      _cameraSpeedMs,
     );
 
     for (final r in results) {
@@ -452,25 +469,9 @@ class RocketGame extends FlameGame
       }
 
       if (r.emitPowerup) {
-        // Zugehörigen Telegraph entfernen (falls noch vorhanden)
-        // Wir suchen den Telegraph an der nächstgelegenen Position (Typ+Nähe)
-        PowerupTelegraphComponent? matchingTelegraph;
-        double bestDist = double.infinity;
-        for (final t in _activeTelegraphs) {
-          final double dx = t.position.x - r.data.position.x;
-          final double dy = t.position.y - r.data.position.y;
-          final double d = dx * dx + dy * dy;
-          if (d < bestDist) {
-            bestDist = d;
-            matchingTelegraph = t;
-          }
-        }
-        if (matchingTelegraph != null) {
-          matchingTelegraph.removeFromParent();
-          _activeTelegraphs.remove(matchingTelegraph);
-        }
-
-        // Echtes Powerup spawnen
+        // Echtes Powerup spawnen -- Telegraph läuft noch weiter bis Powerup
+        // den oberen Bildschirmrand erreicht (position.y >= 0).
+        // Kein sofortiges Entfernen des Telegraphs hier.
         final p = PowerupComponent(
           position: r.data.position.clone(),
           type: r.data.type,
@@ -502,10 +503,32 @@ class RocketGame extends FlameGame
       }
     }
 
-    // Telegraphs Off-Screen-Cleanup (abgelaufene/off-screen entfernen)
+    // Telegraphs:
+    // - entfernen sobald ein Powerup desselben Typs am oberen Bildschirmrand erscheint (y >= 0)
+    // - entfernen wenn abgelaufen oder off-screen
+    for (final p in _activePowerups) {
+      if (p.position.y >= 0) {
+        // Passenden Telegraph suchen (gleicher Typ, nächste X-Position)
+        PowerupTelegraphComponent? match;
+        double bestDx = double.infinity;
+        for (final t in _activeTelegraphs) {
+          if (t.powerupColor == p.type.color) {
+            final double dx = (t.position.x - p.position.x).abs();
+            if (dx < bestDx) {
+              bestDx = dx;
+              match = t;
+            }
+          }
+        }
+        if (match != null) {
+          match.removeFromParent();
+          _activeTelegraphs.remove(match);
+        }
+      }
+    }
+
     for (final t in List<PowerupTelegraphComponent>.from(_activeTelegraphs)) {
       if (t.isExpired || t.position.y > size.y + 60) {
-        // isExpired entfernt sich selbst aus parent, aber sauber aus Liste entfernen
         if (t.parent != null) t.removeFromParent();
         _activeTelegraphs.remove(t);
       }

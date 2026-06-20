@@ -20,8 +20,9 @@ class PowerupTelegraphComponent extends PositionComponent {
   /// Laufzeit in Sekunden: wird von 0 bis [duration] gezählt
   double _elapsed = 0.0;
 
-  /// Wie lange (in Sekunden) das Telegraph angezeigt wird
-  static const double duration = 3.0;
+  /// Wie lange (in Sekunden) das Telegraph maximal angezeigt wird (Sicherheits-Timeout).
+  /// Normal-Fall: wird früher von außen entfernt sobald das Powerup sichtbar wird.
+  static const double duration = 12.0;
 
   /// Radius des Leuchtrings
   static const double _kBaseRadius = 18.0;
@@ -68,8 +69,10 @@ class PowerupTelegraphComponent extends PositionComponent {
   void render(Canvas canvas) {
     if (_expired) return;
 
-    // Fortschritt 0..1 über 3s
-    final double progress = (_elapsed / duration).clamp(0.0, 1.0);
+    // Visuelle Kurve: Telegraph baut sich über die ersten 3s auf und bleibt
+    // danach auf max Helligkeit (bis er von außen entfernt wird).
+    const double kVisualRampSec = 3.0;
+    final double progress = (_elapsed / kVisualRampSec).clamp(0.0, 1.0);
 
     // Pulsieren: sanfte Sinuswelle (Periode 0.9s)
     final double pulse = sin(_elapsed * 2 * pi / 0.9) * 0.5 + 0.5; // 0..1
