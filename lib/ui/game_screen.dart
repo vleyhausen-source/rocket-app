@@ -26,7 +26,7 @@ class _GameScreenState extends State<GameScreen> {
   final List<MilestoneDefinition> _pendingBanners = [];
   MilestoneDefinition? _activeBanner;
 
-  // Meteoriten-Warnung: max 2x pro Lauf anzeigen
+  // Meteoriten-Warnung: wird bei jedem Flug neu angezeigt
   bool _showMeteorWarning = false;
   int _meteorWarningShownCount = 0;
   static const int _kMeteorWarningMaxShows = 2;
@@ -156,7 +156,14 @@ class _GameScreenState extends State<GameScreen> {
             AnimatedOverlay(
               child: StartOverlayWidget(
                 game: _game,
-                onStart: () => _game.startGame(),
+                onStart: () {
+                  // Zähler zurücksetzen damit Banner bei jedem Flug erscheint
+                  setState(() {
+                    _meteorWarningShownCount = 0;
+                    _showMeteorWarning = false;
+                  });
+                  _game.startGame();
+                },
                 onShop: _openShop,
               ),
             ),
@@ -167,7 +174,14 @@ class _GameScreenState extends State<GameScreen> {
               delay: const Duration(milliseconds: 300),
               child: CrashOverlayWidget(
                 game: _game,
-                onRestart: () => _game.startGame(),
+                onRestart: () {
+                  // Zähler zurücksetzen damit Banner bei jedem Flug erscheint
+                  setState(() {
+                    _meteorWarningShownCount = 0;
+                    _showMeteorWarning = false;
+                  });
+                  _game.startGame();
+                },
                 onShop: _openShop,
               ),
             ),
