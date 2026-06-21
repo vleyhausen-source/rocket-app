@@ -657,7 +657,10 @@ class _CrashOverlayWidgetState extends State<CrashOverlayWidget> {
             width: 2,
           ),
         ),
-        child: Column(
+        // SingleChildScrollView verhindert Overflow auf kleinen Geraeten
+        // (z.B. wenn Bestenliste-Button + Ad-Buttons beide sichtbar sind)
+        child: SingleChildScrollView(
+          child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
@@ -831,8 +834,9 @@ class _CrashOverlayWidgetState extends State<CrashOverlayWidget> {
                 ],
               ),
             ],
-          ],
-        ),
+          ],  // children of Column
+          ),  // Column
+        ),  // SingleChildScrollView
       ),
     );
   }

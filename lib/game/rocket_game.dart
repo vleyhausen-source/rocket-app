@@ -941,9 +941,10 @@ class RocketGame extends FlameGame
     await _audioManager.playCrash();
     await _scoreManager.endRun();
 
-    // Score an Play Games Bestenliste senden (im Hintergrund, kein Await nötig)
+    // Score an Play Games Bestenliste senden – totalScore inkl. Coins-Anteil
+    // (currentScore enthält nur Höhe + Stratosphäre, coinBonus fehlt dort)
     GamesServicesController.instance
-        .submitHighscore(_scoreManager.currentScore)
+        .submitHighscore(_scoreManager.totalScore)
         .ignore();
 
     // Absturz-Zaehler erhoehen und persistieren
@@ -1031,6 +1032,9 @@ class RocketGame extends FlameGame
     }
     _activeMeteors.clear();
     _meteorSpawner.reset();
+
+    // Rewarded-Ad fuer naechsten Crash-Screen vorladen
+    _adService.preloadRewarded().ignore();
 
     // Kamera zurücksetzen
     _cameraWorldY = 0.0;
