@@ -5,6 +5,7 @@ import 'package:flame/events.dart';
 import 'package:flame/game.dart';
 import 'package:flutter/material.dart';
 import 'package:rocket_app/components/background_component.dart';
+import 'package:rocket_app/components/black_hole_component.dart';
 import 'package:rocket_app/components/cloud_component.dart';
 import 'package:rocket_app/components/coin_component.dart';
 import 'package:rocket_app/components/explosion_component.dart';
@@ -93,6 +94,17 @@ class RocketGame extends FlameGame
   // --- Meteor-Tracking ---
   final List<MeteorComponent> _activeMeteors = [];
   final MeteorSpawner _meteorSpawner = MeteorSpawner();
+
+  // --- Schwarzes-Loch-Tracking ---
+  final List<BlackHoleComponent> _activeBlackHoles = [];
+  final BlackHoleSpawner _blackHoleSpawner = BlackHoleSpawner();
+
+  // --- Mond-Event ---
+  bool _moonEventTriggered = false;
+  /// Callback: einmalig wenn kMoonHeight erreicht (Banner + Visuell)
+  VoidCallback? onMoonReached;
+  /// Callback: Rakete ist Schwarzem Loch entkommen (Achievement-Flag)
+  VoidCallback? onBlackHoleEscaped;
 
   // --- Touch-Tracking ---
   final Map<int, double> _activeTouches = {};
@@ -223,6 +235,8 @@ class RocketGame extends FlameGame
     _checkPowerupCollisions();
     _checkMeteorSpawn();
     _checkMeteorCollisions();
+    _checkBlackHoleSpawn();
+    _updateBlackHoles(safeDt);
     _updateMilestones();
     
     // Schub-Sound aktualisieren
@@ -335,6 +349,11 @@ class RocketGame extends FlameGame
 
     // Meteore NICHT mitscrollen -- sie bewegen sich im Screen-Space,
     // nicht im Welt-Koordinatensystem. Eigene Velocity reicht.
+
+    // Schwarze Löcher scrollen mit (Welt-Space-Objekte)
+    for (final bh in _activeBlackHoles) {
+      bh.scrollDown(delta);
+    }
   }
 
   /// Spawnt neue Coins wenn der Spieler neue Hoehenbereiche erreicht.
@@ -438,6 +457,13 @@ class RocketGame extends FlameGame
         altM >= GameConstants.kMeteorWarningHeight) {
       _meteorWarningTriggered = true;
       onMeteorWarning?.call();
+    }
+
+    // Mond-Event: einmalig bei kMoonHeight
+    if (!_moonEventTriggered && altM >= GameConstants.kMoonHeight) {
+      _moonEventTriggered = true;
+      _background.triggerMoon();
+      onMoonReached?.call();
     }
   }
 
@@ -802,13 +828,15 @@ class RocketGame extends FlameGame
   // METEOR-SPAWN & KOLLISION
   // =========================================================================
 
-  /// Prueft ob ein neuer Meteor gespawnt werden soll (ab 25.000m)
+  /// Prueft ob ein neuer Meteor gespawnt werden soll
   void _checkMeteorSpawn() {
     final double altM = _cameraWorldY / ScoreConstants.kPixelsPerMeter;
     final MeteorSpawnData? data = _meteorSpawner.check(
       altitudeM: altM,
       screenWidth: size.x,
       screenHeight: size.y,
+      activeMeteors: _activeMeteors.length,
+      blackHoleActive: _activeBlackHoles.isNotEmpty,
     );
     if (data == null) return;
 
@@ -877,8 +905,69 @@ class RocketGame extends FlameGame
   }
 
   // =========================================================================
-  // COIN SPAWNING
+  // SCHWARZES LOCH -- SPAWN, SOG, KOLLISION
   // =========================================================================
+
+  /// Prueft ob ein neues Schwarzes Loch gespawnt werden soll (ab kBlackHoleMinHeight).
+  void _checkBlackHoleSpawn() {
+    final double altM = _cameraWorldY / ScoreConstants.kPixelsPerMeter;
+    final BlackHoleSpawnData? data = _blackHoleSpawner.check(
+      altitudeM: altM,
+      screenWidth: size.x,
+      screenHeight: size.y,
+      activeCount: _activeBlackHoles.length,
+    );
+    if (data == null) return;
+
+    final bh = BlackHoleComponent.spawn(
+      rnd: data.rnd,
+      screenWidth: data.screenWidth,
+      screenHeight: data.screenHeight,
+    );
+    // Achievement-Callback verdrahten
+    bh.onEscaped = () {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        onBlackHoleEscaped?.call();
+      });
+    };
+    _activeBlackHoles.add(bh);
+    add(bh);
+  }
+
+  /// Aktualisiert alle aktiven Schwarzen Löcher: Sog anwenden, Cleanup.
+  void _updateBlackHoles(double dt) {
+    if (_activeBlackHoles.isEmpty) return;
+
+    // Raketen-Weltposition (Mittelpunkt)
+    final Vector2 rocketPos = Vector2(
+      _rocket.position.x,
+      _rocket.position.y - _rocket.size.y / 2,
+    );
+
+    for (final bh in List<BlackHoleComponent>.from(_activeBlackHoles)) {
+      // Fertige Loecher entfernen
+      if (bh.isDone) {
+        if (bh.isMounted) bh.removeFromParent();
+        _activeBlackHoles.remove(bh);
+        continue;
+      }
+
+      // Sog auf Rakete anwenden (wenn im Wirkungsradius)
+      final Vector2? pull = bh.computePull(rocketPos);
+      if (pull != null) {
+        _rocket.velocity.x += pull.x * dt;
+        _rocket.velocity.y += pull.y * dt;
+      }
+
+      // Kernkollision: Absturz
+      final Vector2 toCoreVec = rocketPos - bh.position;
+      if (toCoreVec.length <= GameConstants.kBlackHoleCoreRadius + 8) {
+        bh.startDying();
+        _triggerCrash();
+        return;
+      }
+    }
+  }
 
   void _spawnCoins() {
     for (final coin in List<CoinComponent>.from(_activeCoins)) {
@@ -1032,6 +1121,16 @@ class RocketGame extends FlameGame
     }
     _activeMeteors.clear();
     _meteorSpawner.reset();
+
+    // Schwarze Loecher zuruecksetzen
+    for (final bh in List<BlackHoleComponent>.from(_activeBlackHoles)) {
+      if (bh.isMounted) bh.removeFromParent();
+    }
+    _activeBlackHoles.clear();
+    _blackHoleSpawner.reset();
+
+    // Mond-Event-Flag zuruecksetzen
+    _moonEventTriggered = false;
 
     // Rewarded-Ad fuer naechsten Crash-Screen vorladen
     _adService.preloadRewarded().ignore();

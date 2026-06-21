@@ -31,6 +31,9 @@ class _GameScreenState extends State<GameScreen> {
   int _meteorWarningShownCount = 0;
   static const int _kMeteorWarningMaxShows = 2;
 
+  // Mond-Banner: einmalig pro Lauf
+  bool _showMoonBanner = false;
+
   @override
   void initState() {
     super.initState();
@@ -39,6 +42,7 @@ class _GameScreenState extends State<GameScreen> {
     _game.onCrash = _refresh;
     _game.onMilestone = _onMilestone;
     _game.onMeteorWarning = _onMeteorWarning;
+    _game.onMoonReached = _onMoonReached;
 
     // Streak nach erstem Frame prüfen (Context nötig für Dialog)
     WidgetsBinding.instance.addPostFrameCallback((_) => _checkStreak());
@@ -108,6 +112,22 @@ class _GameScreenState extends State<GameScreen> {
     });
   }
 
+  void _onMoonReached() {
+    if (!mounted) return;
+    // Callback kommt aus Flame-Loop → postFrameCallback
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      setState(() => _showMoonBanner = true);
+    });
+  }
+
+  void _onMoonBannerDone() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      setState(() => _showMoonBanner = false);
+    });
+  }
+
   Future<void> _checkStreak() async {
     final info = await StreakManager.instance.checkAndUpdate();
     if (!mounted) return;
@@ -161,6 +181,7 @@ class _GameScreenState extends State<GameScreen> {
                   setState(() {
                     _meteorWarningShownCount = 0;
                     _showMeteorWarning = false;
+                    _showMoonBanner = false;
                   });
                   _game.startGame();
                 },
@@ -179,6 +200,7 @@ class _GameScreenState extends State<GameScreen> {
                   setState(() {
                     _meteorWarningShownCount = 0;
                     _showMeteorWarning = false;
+                    _showMoonBanner = false;
                   });
                   _game.startGame();
                 },
@@ -220,6 +242,13 @@ class _GameScreenState extends State<GameScreen> {
             MeteorWarningBanner(
               key: ValueKey('meteor_warning_banner_$_meteorWarningShownCount'),
               onDone: _onMeteorWarningDone,
+            ),
+
+          // Mond-Banner (einmalig pro Lauf)
+          if (_showMoonBanner)
+            MoonReachedBanner(
+              key: const ValueKey('moon_reached_banner'),
+              onDone: _onMoonBannerDone,
             ),
         ],
       ),

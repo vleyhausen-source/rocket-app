@@ -2,6 +2,7 @@ import 'dart:math';
 import 'package:flame/collisions.dart';
 import 'package:flame/components.dart';
 import 'package:flutter/material.dart';
+import 'package:rocket_app/game/game_constants.dart';
 
 // ---------------------------------------------------------------------------
 // Konstanten
@@ -261,13 +262,45 @@ class MeteorSpawner {
         _rnd.nextDouble() * (kMeteorSpawnIntervalMax - kMeteorSpawnIntervalMin);
   }
 
+  /// Berechnet wie viele Meteoriten gleichzeitig erlaubt sind (Hoehen-Ramp).
+  /// 1 ab kMeteorRampBaseHeight, +1 pro kMeteorRampStepM, max kMeteorMaxNormal.
+  static int maxConcurrent({
+    required double altitudeM,
+    required bool blackHoleActive,
+  }) {
+    if (altitudeM < GameConstants.kMeteorRampBaseHeight) return 0;
+    final int steps =
+        ((altitudeM - GameConstants.kMeteorRampBaseHeight) /
+                GameConstants.kMeteorRampStepM)
+            .floor();
+    final int limit = (1 + steps).clamp(
+      1,
+      blackHoleActive
+          ? GameConstants.kMeteorMaxWithBlackHole
+          : GameConstants.kMeteorMaxNormal,
+    );
+    return limit;
+  }
+
   /// Prueft ob ein neuer Meteor gespawnt werden soll.
+  /// [activeMeteors]: aktuell aktive Meteoriten-Anzahl.
+  /// [blackHoleActive]: ob gerade ein Schwarzes Loch aktiv ist.
   MeteorSpawnData? check({
     required double altitudeM,
     required double screenWidth,
     required double screenHeight,
+    required int activeMeteors,
+    required bool blackHoleActive,
   }) {
     if (altitudeM < kMeteorMinAltitudeM) return null;
+
+    // Gleichzeitigkeits-Limit pruefen
+    final int maxCount = maxConcurrent(
+      altitudeM: altitudeM,
+      blackHoleActive: blackHoleActive,
+    );
+    if (activeMeteors >= maxCount) return null;
+
     if (altitudeM < _nextSpawnAltM) return null;
 
     // Naechsten Spawn planen

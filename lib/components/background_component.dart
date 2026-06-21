@@ -32,6 +32,16 @@ class BackgroundComponent extends PositionComponent {
   double _zoneLabelTimer = 0.0;
   static const double kLabelDuration = 3.0; // Sekunden sichtbar
 
+  // --- Mond-Vorbeifahrt ---
+  bool _moonTriggered = false;    // einmalig pro Lauf
+  bool _moonActive = false;
+  double _moonY = 0.0;            // aktuelle Screen-Y des Mond-Mittelpunkts
+  double _moonX = 0.0;
+  static const double _kMoonRadius = 55.0;
+  static const double _kMoonScrollSpeed = 28.0; // px/s (zwischen Planeten)
+  static const double _kMoonLabelDurationSec = 3.5;
+  double _moonLabelTimer = 0.0;
+
   BackgroundComponent({required Vector2 screenSize})
       : super(size: screenSize, position: Vector2.zero());
 
@@ -85,6 +95,21 @@ class BackgroundComponent extends PositionComponent {
     _zoneLabelOpacity = 0.0;
     _zoneLabelTimer = 0.0;
     _zoneLabelText = '';
+    // Mond zurücksetzen
+    _moonTriggered = false;
+    _moonActive = false;
+    _moonLabelTimer = 0.0;
+  }
+
+  /// Startet die Mond-Vorbeifahrt (einmalig pro Lauf, aufgerufen von RocketGame).
+  void triggerMoon() {
+    if (_moonTriggered) return;
+    _moonTriggered = true;
+    _moonActive = true;
+    // Mond spawnt oben aus dem Bildschirm, zufällige X-Position rechts
+    _moonX = size.x * 0.65 + _rnd.nextDouble() * size.x * 0.20;
+    _moonY = -_kMoonRadius - 20;
+    _moonLabelTimer = _kMoonLabelDurationSec;
   }
 
   @override
@@ -104,12 +129,24 @@ class BackgroundComponent extends PositionComponent {
     for (final star in _stars) {
       star.twinklePhase += star.twinkleSpeed * dt;
     }
+
+    // Mond-Vorbeifahrt animieren
+    if (_moonActive) {
+      _moonY += _kMoonScrollSpeed * dt;
+      if (_moonY > size.y + _kMoonRadius + 40) {
+        _moonActive = false;
+      }
+      if (_moonLabelTimer > 0) {
+        _moonLabelTimer -= dt;
+      }
+    }
   }
 
   @override
   void render(Canvas canvas) {
     _renderSky(canvas);
     _renderStars(canvas);
+    if (_moonActive) _renderMoon(canvas);
     _renderGround(canvas);
     if (_zoneLabelOpacity > 0) {
       _renderZoneLabel(canvas);
@@ -177,6 +214,50 @@ class BackgroundComponent extends PositionComponent {
     canvas.drawRect(Rect.fromLTWH(cx - 40, groundY - 8, 80, 8), _padPaint);
     canvas.drawCircle(Offset(cx - 35, groundY - 10), 4, _padLightPaint);
     canvas.drawCircle(Offset(cx + 35, groundY - 10), 4, _padLightPaint);
+  }
+
+  /// Zeichnet den vorbeiziehenden Mond (grauer Krater-Mond mit sanftem Glow).
+  void _renderMoon(Canvas canvas) {
+    final Offset center = Offset(_moonX, _moonY);
+    final double r = _kMoonRadius;
+
+    // Aeusserer Glow
+    final Paint glowPaint = Paint()
+      ..color = const Color(0xFFDDDDDD).withValues(alpha: 0.18)
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 20);
+    canvas.drawCircle(center, r * 1.6, glowPaint);
+
+    // Mond-Koerper
+    final Paint moonPaint = Paint()
+      ..color = const Color(0xFFBCBCBC);
+    canvas.drawCircle(center, r, moonPaint);
+
+    // Schattenseite
+    final Paint shadowPaint = Paint()
+      ..color = Colors.black.withValues(alpha: 0.40);
+    canvas.save();
+    canvas.clipRect(Rect.fromCircle(center: center, radius: r));
+    canvas.drawRect(
+      Rect.fromLTWH(center.dx - r * 0.15, center.dy - r, r, r * 2),
+      shadowPaint,
+    );
+    canvas.restore();
+
+    // Krater (deterministisch)
+    final craterRnd = Random(42);
+    final Paint craterPaint = Paint()
+      ..color = const Color(0xFF888888).withValues(alpha: 0.70)
+      ..style = PaintingStyle.fill;
+    for (int i = 0; i < 5; i++) {
+      final double cx = center.dx + (craterRnd.nextDouble() - 0.5) * r * 1.3;
+      final double cy = center.dy + (craterRnd.nextDouble() - 0.5) * r * 1.3;
+      final double cr = r * (0.07 + craterRnd.nextDouble() * 0.12);
+      if ((cx - center.dx) * (cx - center.dx) +
+              (cy - center.dy) * (cy - center.dy) <
+          (r * 0.85) * (r * 0.85)) {
+        canvas.drawCircle(Offset(cx, cy), cr, craterPaint);
+      }
+    }
   }
 
   /// Zonen-Einblend-Label (z.B. "STRATOSPHÄRE")

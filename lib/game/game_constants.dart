@@ -85,4 +85,37 @@ class GameConstants {
   // --- Meteoriten-Warnung ---
   /// Höhenschwellenwert für die Meteoriten-Warnung in Metern.
   static const double kMeteorWarningHeight = 10500;
+
+  // --- Endgame-Hoehenmarken ---
+  /// Mond-Event: Mond zieht sichtbar vorbei, Banner erscheint (einmalig pro Lauf).
+  static const double kMoonHeight = 25000.0;
+
+  // --- Meteoriten-Ramp ---
+  /// Basishoehe ab der Meteoriten spawnen (= kMeteorWarningHeight).
+  /// Hier beginnen sie mit max 1 gleichzeitig.
+  static const double kMeteorRampBaseHeight = 10000.0;
+  /// Alle diese Meter wird +1 gleichzeitiger Meteorit erlaubt.
+  static const double kMeteorRampStepM = 5000.0;
+  /// Maximale gleichzeitige Meteoriten (ohne Schwarzes Loch).
+  static const int kMeteorMaxNormal = 3;
+  /// Maximale gleichzeitige Meteoriten wenn ein Schwarzes Loch aktiv ist.
+  static const int kMeteorMaxWithBlackHole = 2;
+
+  // --- Schwarzes Loch ---
+  /// Ab dieser Hoehe koennen Schwarze Loecher spawnen.
+  static const double kBlackHoleMinHeight = 25000.0;
+  /// Spawn-Intervall Schwarzes Loch: min Meter zwischen zwei Spawns.
+  static const double kBlackHoleSpawnIntervalMin = 6000.0;
+  /// Spawn-Intervall Schwarzes Loch: max Meter zwischen zwei Spawns.
+  static const double kBlackHoleSpawnIntervalMax = 10000.0;
+  /// Maximale gleichzeitige Schwarze Loecher.
+  static const int kBlackHoleMaxActive = 1;
+  /// Sog-Staerke: Beschleunigung der Rakete in Richtung Kern (px/s²).
+  static const double kBlackHolePullStrength = 140.0;
+  /// Sog-Radius: innerhalb diesem Radius wirkt der Sog (px).
+  static const double kBlackHolePullRadius = 220.0;
+  /// Todlicher Kern-Radius (px) – Beruehrung = Absturz.
+  static const double kBlackHoleCoreRadius = 28.0;
+  /// Telegraf-Vorlaufzeit in Metern (Schwarzes Loch kuendigt sich an).
+  static const double kBlackHoleTelegraphLeadM = 3000.0;
 }

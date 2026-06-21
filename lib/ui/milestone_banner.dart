@@ -408,3 +408,119 @@ class _MeteorWarningBannerState extends State<MeteorWarningBanner>
     );
   }
 }
+
+// ==========================================================================
+// MoonReachedBanner -- Mond erreicht (einmalig pro Lauf, Blau/Silber)
+// ==========================================================================
+class MoonReachedBanner extends StatefulWidget {
+  final VoidCallback? onDone;
+  const MoonReachedBanner({super.key, this.onDone});
+
+  @override
+  State<MoonReachedBanner> createState() => _MoonReachedBannerState();
+}
+
+class _MoonReachedBannerState extends State<MoonReachedBanner>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _ctrl;
+  late final Animation<double> _fade;
+  late final Animation<double> _scale;
+
+  @override
+  void initState() {
+    super.initState();
+    // 400ms rein, 2.5s halten, 400ms raus = 3300ms gesamt
+    _ctrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 3300),
+    );
+    _fade = TweenSequence<double>([
+      TweenSequenceItem(tween: Tween(begin: 0.0, end: 1.0), weight: 12.1),
+      TweenSequenceItem(tween: ConstantTween(1.0), weight: 75.8),
+      TweenSequenceItem(tween: Tween(begin: 1.0, end: 0.0), weight: 12.1),
+    ]).animate(_ctrl);
+    _scale = TweenSequence<double>([
+      TweenSequenceItem(
+        tween: Tween(begin: 0.85, end: 1.0)
+            .chain(CurveTween(curve: Curves.easeOutBack)),
+        weight: 12.1,
+      ),
+      TweenSequenceItem(tween: ConstantTween(1.0), weight: 87.9),
+    ]).animate(_ctrl);
+    _ctrl.forward().then((_) => widget.onDone?.call());
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Positioned(
+      top: 0,
+      left: 0,
+      right: 0,
+      child: IgnorePointer(
+        child: FadeTransition(
+          opacity: _fade,
+          child: ScaleTransition(
+            scale: _scale,
+            child: SafeArea(
+              bottom: false,
+              child: Padding(
+                padding: const EdgeInsets.only(top: 16),
+                child: Center(
+                  child: Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 20),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 22, vertical: 14),
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF0A1A3A), Color(0xFF1A3A6A)],
+                      ),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                        color: Colors.lightBlueAccent.withValues(alpha: 0.85),
+                        width: 2,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.lightBlueAccent.withValues(alpha: 0.45),
+                          blurRadius: 28,
+                          spreadRadius: 4,
+                        ),
+                      ],
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text('🌕', style: TextStyle(fontSize: 24)),
+                        SizedBox(width: 12),
+                        Flexible(
+                          child: Text(
+                            'Mond erreicht!',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 17,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: 1.5,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        SizedBox(width: 12),
+                        Text('🌕', style: TextStyle(fontSize: 24)),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
