@@ -26,8 +26,10 @@ const double kBHFadeInSec = 1.5;
 const double kBHFadeOutSec = 1.5;
 /// Maximale Lebenszeit (Sekunden) bevor das Schwarze Loch von selbst verschwindet.
 const double kBHLifetimeSec = 30.0;
-/// Scrollgeschwindigkeit nach unten (px/s) – ähnlich einem kleinen Planeten.
-const double kBHScrollSpeed = 14.0;
+/// Scrollgeschwindigkeit nach unten (px/s).
+/// Bewusst identisch mit kMeteorScrollSpeed (39.33) -- Schwarzes Loch soll
+/// gleich schnell wie Meteoriten durchs Bild laufen.
+const double kBHScrollSpeed = 39.33;
 
 /// Callback wenn die Rakete den Kern berührt hat.
 typedef BlackHoleCrashCallback = void Function();

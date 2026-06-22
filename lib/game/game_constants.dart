@@ -86,6 +86,10 @@ class GameConstants {
   /// Höhenschwellenwert für die Meteoriten-Warnung in Metern.
   static const double kMeteorWarningHeight = 10500;
 
+  // --- Meteoriten ---
+  /// Scroll-Geschwindigkeit der Meteoriten in px/s (auch Black Hole teilt diesen Wert).
+  static const double kMeteorScrollSpeed = 39.33;
+
   // --- Endgame-Hoehenmarken ---
   /// Mond-Event: Mond zieht sichtbar vorbei, Banner erscheint (einmalig pro Lauf).
   static const double kMoonHeight = 25000.0;

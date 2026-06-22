@@ -19,7 +19,8 @@ const double kMeteorSpawnIntervalMax = 2500.0;
 const double kMeteorRadiusMin = 18.0;
 const double kMeteorRadiusMax = 34.0;
 
-/// Scroll-Geschwindigkeit in px/s: nochmals 25% schneller (war 31.46 px/s)
+/// Scroll-Geschwindigkeit in px/s: nochmals 25% schneller (war 31.46 px/s).
+/// Zentraler Wert in GameConstants.kMeteorScrollSpeed -- hier nur als Alias fuer lokale Nutzung.
 const double kMeteorScrollSpeed = 39.33;
 
 /// Schweif-Laenge als Vielfaches des Radius
@@ -255,11 +256,10 @@ class MeteorSpawner {
   /// Naechste Hoehe (Meter) bei der ein Meteor gespawnt wird
   double _nextSpawnAltM = kMeteorMinAltitudeM;
 
-  /// Initialisiert die erste Spawn-Hoehe
+  /// Initialisiert die erste Spawn-Hoehe.
+  /// Erster Spawn direkt ab kMeteorMinAltitudeM -- kein kuenstlicher Vorlauf.
   void reset() {
-    _nextSpawnAltM =
-        kMeteorMinAltitudeM + kMeteorSpawnIntervalMin +
-        _rnd.nextDouble() * (kMeteorSpawnIntervalMax - kMeteorSpawnIntervalMin);
+    _nextSpawnAltM = kMeteorMinAltitudeM;
   }
 
   /// Berechnet wie viele Meteoriten gleichzeitig erlaubt sind (Hoehen-Ramp).
