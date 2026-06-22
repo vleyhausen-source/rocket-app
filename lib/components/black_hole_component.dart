@@ -259,27 +259,29 @@ class BlackHoleComponent extends PositionComponent {
 class BlackHoleSpawner {
   final Random _rnd = Random();
   double _nextSpawnAltM = double.infinity;
-  bool _initialized = false;
 
   void reset() {
-    _initialized = false;
     _nextSpawnAltM = double.infinity;
   }
 
   /// Prueft ob ein neues Schwarzes Loch gespawnt werden soll.
   /// [activeCount]: aktuell aktive Schwarze Loecher.
+  /// [activeMeteors]: aktuell aktive Meteoriten (BH nur wenn < kMeteorMaxWithBlackHole).
   BlackHoleSpawnData? check({
     required double altitudeM,
     required double screenWidth,
     required double screenHeight,
     required int activeCount,
+    required int activeMeteors,
   }) {
     if (altitudeM < GameConstants.kBlackHoleMinHeight) return null;
     if (activeCount >= GameConstants.kBlackHoleMaxActive) return null;
 
-    // Ersten Spawn zeitplan setzen sobald Schwelle erreicht
-    if (!_initialized) {
-      _initialized = true;
+    // Kein BH wenn schon kMeteorMaxWithBlackHole Meteoriten auf dem Bildschirm
+    if (activeMeteors >= GameConstants.kMeteorMaxWithBlackHole) return null;
+
+    // Ersten Spawn direkt ab Schwelle ohne Vorlauf-Delay
+    if (_nextSpawnAltM == double.infinity) {
       _nextSpawnAltM = altitudeM +
           GameConstants.kBlackHoleSpawnIntervalMin +
           _rnd.nextDouble() *

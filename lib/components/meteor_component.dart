@@ -262,24 +262,32 @@ class MeteorSpawner {
     _nextSpawnAltM = kMeteorMinAltitudeM;
   }
 
-  /// Berechnet wie viele Meteoriten gleichzeitig erlaubt sind (Hoehen-Ramp).
-  /// 1 ab kMeteorRampBaseHeight, +1 pro kMeteorRampStepM, max kMeteorMaxNormal.
+  /// Berechnet wie viele Meteoriten gleichzeitig erlaubt sind (feste Schwellen).
+  /// 1 ab 10.750m | 2 ab 15.000m | 3 ab 20.000m (nur ohne aktives Schwarzes Loch).
+  /// Mit aktivem Schwarzen Loch: max kMeteorMaxWithBlackHole.
   static int maxConcurrent({
     required double altitudeM,
     required bool blackHoleActive,
   }) {
     if (altitudeM < GameConstants.kMeteorRampBaseHeight) return 0;
-    final int steps =
-        ((altitudeM - GameConstants.kMeteorRampBaseHeight) /
-                GameConstants.kMeteorRampStepM)
-            .floor();
-    final int limit = (1 + steps).clamp(
+
+    // Rohes Limit basierend auf Hoehenzone
+    final int rawLimit;
+    if (altitudeM >= GameConstants.kMeteorRamp3Height) {
+      rawLimit = 3;
+    } else if (altitudeM >= GameConstants.kMeteorRamp2Height) {
+      rawLimit = 2;
+    } else {
+      rawLimit = 1;
+    }
+
+    // Wenn Schwarzes Loch aktiv: max kMeteorMaxWithBlackHole
+    return rawLimit.clamp(
       1,
       blackHoleActive
           ? GameConstants.kMeteorMaxWithBlackHole
           : GameConstants.kMeteorMaxNormal,
     );
-    return limit;
   }
 
   /// Prueft ob ein neuer Meteor gespawnt werden soll.

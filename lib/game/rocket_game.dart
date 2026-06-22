@@ -917,6 +917,7 @@ class RocketGame extends FlameGame
       screenWidth: size.x,
       screenHeight: size.y,
       activeCount: _activeBlackHoles.length,
+      activeMeteors: _activeMeteors.length,
     );
     if (data == null) return;
 

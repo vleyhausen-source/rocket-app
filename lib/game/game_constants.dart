@@ -94,11 +94,13 @@ class GameConstants {
   /// Mond-Event: Mond zieht sichtbar vorbei, Banner erscheint (einmalig pro Lauf).
   static const double kMoonHeight = 25000.0;
 
-  // --- Meteoriten-Ramp ---
-  /// Basishoehe ab der Meteoriten spawnen (= kMeteorMinAltitudeM).
+  // --- Meteoriten-Ramp (feste Schwellen) ---
+  /// Ab dieser Hoehe spawnen Meteoriten (1 gleichzeitig).
   static const double kMeteorRampBaseHeight = 10750.0;
-  /// Alle diese Meter wird +1 gleichzeitiger Meteorit erlaubt.
-  static const double kMeteorRampStepM = 5000.0;
+  /// Ab dieser Hoehe duerfen 2 Meteoriten gleichzeitig spawnen.
+  static const double kMeteorRamp2Height = 15000.0;
+  /// Ab dieser Hoehe duerfen 3 Meteoriten gleichzeitig spawnen (ohne BH).
+  static const double kMeteorRamp3Height = 20000.0;
   /// Maximale gleichzeitige Meteoriten (ohne Schwarzes Loch).
   static const int kMeteorMaxNormal = 3;
   /// Maximale gleichzeitige Meteoriten wenn ein Schwarzes Loch aktiv ist.
@@ -108,9 +110,9 @@ class GameConstants {
   /// Ab dieser Hoehe koennen Schwarze Loecher spawnen.
   static const double kBlackHoleMinHeight = 25000.0;
   /// Spawn-Intervall Schwarzes Loch: min Meter zwischen zwei Spawns.
-  static const double kBlackHoleSpawnIntervalMin = 6000.0;
+  static const double kBlackHoleSpawnIntervalMin = 800.0;
   /// Spawn-Intervall Schwarzes Loch: max Meter zwischen zwei Spawns.
-  static const double kBlackHoleSpawnIntervalMax = 10000.0;
+  static const double kBlackHoleSpawnIntervalMax = 1500.0;
   /// Maximale gleichzeitige Schwarze Loecher.
   static const int kBlackHoleMaxActive = 1;
   /// Sog-Staerke: Beschleunigung der Rakete in Richtung Kern (px/s²).
