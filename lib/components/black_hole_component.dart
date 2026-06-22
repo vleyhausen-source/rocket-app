@@ -246,10 +246,9 @@ class BlackHoleComponent extends PositionComponent {
     return dir * strength;
   }
 
-  /// Welt-Scroll anwenden (Schwarze Löcher sind Welt-Space-Objekte).
-  void scrollDown(double delta) {
-    position.y += delta;
-  }
+  /// Welt-Scroll: No-Op -- Schwarzes Loch ist jetzt Screen-Space (wie Meteoriten),
+  /// bewegt sich also nur per eigener Velocity nach unten, nicht mit der Kamera.
+  void scrollDown(double delta) {}
 }
 
 // ---------------------------------------------------------------------------

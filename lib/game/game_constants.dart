@@ -95,9 +95,8 @@ class GameConstants {
   static const double kMoonHeight = 25000.0;
 
   // --- Meteoriten-Ramp ---
-  /// Basishoehe ab der Meteoriten spawnen (= kMeteorWarningHeight).
-  /// Hier beginnen sie mit max 1 gleichzeitig.
-  static const double kMeteorRampBaseHeight = 10000.0;
+  /// Basishoehe ab der Meteoriten spawnen (= kMeteorMinAltitudeM).
+  static const double kMeteorRampBaseHeight = 10750.0;
   /// Alle diese Meter wird +1 gleichzeitiger Meteorit erlaubt.
   static const double kMeteorRampStepM = 5000.0;
   /// Maximale gleichzeitige Meteoriten (ohne Schwarzes Loch).

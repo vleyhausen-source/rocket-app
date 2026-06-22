@@ -9,7 +9,7 @@ import 'package:rocket_app/game/game_constants.dart';
 // ---------------------------------------------------------------------------
 
 /// Mindesthoehe (Meter) ab der Meteoriten spawnen
-const double kMeteorMinAltitudeM = 10000.0;
+const double kMeteorMinAltitudeM = 10750.0;
 
 /// Spawn-Intervall in Metern (min/max)
 const double kMeteorSpawnIntervalMin = 1500.0;

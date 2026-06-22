@@ -350,7 +350,8 @@ class RocketGame extends FlameGame
     // Meteore NICHT mitscrollen -- sie bewegen sich im Screen-Space,
     // nicht im Welt-Koordinatensystem. Eigene Velocity reicht.
 
-    // Schwarze Löcher scrollen mit (Welt-Space-Objekte)
+    // Schwarze Löcher ebenfalls NICHT mitscrollen -- jetzt Screen-Space wie Meteoriten.
+    // scrollDown() ist ein No-Op, der Aufruf schadet aber nicht.
     for (final bh in _activeBlackHoles) {
       bh.scrollDown(delta);
     }
