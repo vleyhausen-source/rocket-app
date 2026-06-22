@@ -232,11 +232,12 @@ class BackgroundComponent extends PositionComponent {
       ..color = const Color(0xFFBCBCBC);
     canvas.drawCircle(center, r, moonPaint);
 
-    // Schattenseite
+    // Schattenseite (kreisrund clippen damit kein rechteckiger Schatten-Ueberhang sichtbar ist)
     final Paint shadowPaint = Paint()
       ..color = Colors.black.withValues(alpha: 0.40);
     canvas.save();
-    canvas.clipRect(Rect.fromCircle(center: center, radius: r));
+    final Path moonClip = Path()..addOval(Rect.fromCircle(center: center, radius: r));
+    canvas.clipPath(moonClip);
     canvas.drawRect(
       Rect.fromLTWH(center.dx - r * 0.15, center.dy - r, r, r * 2),
       shadowPaint,

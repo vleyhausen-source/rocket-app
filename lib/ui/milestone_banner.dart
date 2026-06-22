@@ -382,15 +382,17 @@ class _MeteorWarningBannerState extends State<MeteorWarningBanner>
                             color: Colors.orangeAccent, size: 28),
                         SizedBox(width: 12),
                         Flexible(
-                          child: Text(
-                            'Achtung Meteoriten',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 17,
-                              fontWeight: FontWeight.w900,
-                              letterSpacing: 1.5,
+                          child: FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: Text(
+                              'Achtung Meteoriten',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 17,
+                                fontWeight: FontWeight.w900,
+                                letterSpacing: 0.8,
+                              ),
                             ),
-                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
                         SizedBox(width: 12),

@@ -309,9 +309,14 @@ class MeteorSpawner {
     );
     if (activeMeteors >= maxCount) return null;
 
-    if (altitudeM < _nextSpawnAltM) return null;
+    // Spawn-Interval gilt nur fuer den ersten (neuen) Meteor-Slot.
+    // Sind bereits Meteoriten aktiv und das Limit erlaubt mehr davon,
+    // soll kein kuenstliches Warte-Interval einen Nachschuss blockieren.
+    // Das verhindert, dass bei 15.000-20.000m (max 2) nur 1 Meteor erscheint,
+    // weil _nextSpawnAltM noch nicht abgelaufen ist.
+    if (activeMeteors == 0 && altitudeM < _nextSpawnAltM) return null;
 
-    // Naechsten Spawn planen
+    // Naechsten Spawn planen (neues Interval ab jetzt)
     _nextSpawnAltM = altitudeM +
         kMeteorSpawnIntervalMin +
         _rnd.nextDouble() * (kMeteorSpawnIntervalMax - kMeteorSpawnIntervalMin);

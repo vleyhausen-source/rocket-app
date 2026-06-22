@@ -116,7 +116,8 @@ class GameConstants {
   /// Maximale gleichzeitige Schwarze Loecher.
   static const int kBlackHoleMaxActive = 1;
   /// Sog-Staerke: Beschleunigung der Rakete in Richtung Kern (px/s²).
-  static const double kBlackHolePullStrength = 140.0;
+  /// Um 50% reduziert gegenueber v1.0.36 (war 140.0).
+  static const double kBlackHolePullStrength = 70.0;
   /// Sog-Radius: innerhalb diesem Radius wirkt der Sog (px).
   static const double kBlackHolePullRadius = 220.0;
   /// Todlicher Kern-Radius (px) – Beruehrung = Absturz.
