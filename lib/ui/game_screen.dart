@@ -167,6 +167,32 @@ class _GameScreenState extends State<GameScreen> {
               onActivateAutopilot: () => _game.activateAutopilot(),
             ),
 
+          // Zonen-Label -- Flutter-Overlay damit es immer UEBER den Planeten liegt
+          if (_game.isPlaying && _game.zoneLabelOpacity > 0)
+            IgnorePointer(
+              child: Align(
+                alignment: const Alignment(0.0, -0.62),
+                child: Opacity(
+                  opacity: _game.zoneLabelOpacity.clamp(0.0, 1.0),
+                  child: Text(
+                    _game.zoneLabelText,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 6,
+                      shadows: [
+                        Shadow(
+                          color: Colors.black54,
+                          blurRadius: 8,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+
           // Ready-Overlay: Rakete steht, warte auf Touch
           if (_game.isReady)
             const _ReadyOverlay(),

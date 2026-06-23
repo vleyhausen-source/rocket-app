@@ -226,20 +226,24 @@ class BlackHoleComponent extends PositionComponent {
   bool get isDone => _state == BlackHoleState.done;
 
   /// Berechnet den Sog-Vektor auf die Rakete (px/s² als Beschleunigungsvektor).
-  /// Gibt null zurück wenn die Rakete ausserhalb des Sog-Radius ist.
+  /// Gibt null zurueck wenn die Rakete ausserhalb des Sog-Radius ist.
+  ///
+  /// Formel: F = kBlackHolePullStrength * t
+  ///   t = 1 - (dist / pullRadius), also 0 am Rand, 1 direkt am Kern.
+  /// Damit ist Sog am Rand nahezu 0 und waechst linear zur Mitte.
+  /// Ausserhalb des Kerns ist volles Gegensteuern IMMER staerker als der Sog.
   Vector2? computePull(Vector2 rocketWorldPos) {
     // position ist Mittelpunkt (anchor=center)
     final Vector2 toRocket = rocketWorldPos - position;
     final double dist = toRocket.length;
     if (dist <= 0 || dist > GameConstants.kBlackHolePullRadius) return null;
 
-    // Sog: linear von kBlackHolePullStrength (Rand) bis 4x (nahe Kern)
-    // -> je naeher, desto staerker, aber geclampt fuer Fairness
+    // Linearer Naeherungs-Parameter: 0 am Rand, 1 am Kern-Rand
     final double t =
         1.0 - (dist / GameConstants.kBlackHolePullRadius).clamp(0.0, 1.0);
-    final double strength = GameConstants.kBlackHolePullStrength * (1.0 + t * 3.0);
+    final double strength = GameConstants.kBlackHolePullStrength * t;
 
-    // Richtung: von Rakete zum Kern (negierter Vektor)
+    // Richtung: von Rakete zum Kern
     final Vector2 dir = (position - rocketWorldPos).normalized();
 
     _wasPulling = true;

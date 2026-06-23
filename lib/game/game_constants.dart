@@ -115,9 +115,12 @@ class GameConstants {
   static const double kBlackHoleSpawnIntervalMax = 1500.0;
   /// Maximale gleichzeitige Schwarze Loecher.
   static const int kBlackHoleMaxActive = 1;
-  /// Sog-Staerke: Beschleunigung der Rakete in Richtung Kern (px/s²).
-  /// Um 50% reduziert gegenueber v1.0.36 (war 140.0).
-  static const double kBlackHolePullStrength = 70.0;
+  /// Sog-Staerke: Beschleunigung der Rakete in Richtung Kern (px/s²) direkt am Kern.
+  /// Formel: F = kBlackHolePullStrength * t, wobei t=Naeherung (0=Rand, 1=Kern).
+  /// Max-Schub der Rakete betraegt ~112 px/s² (14 m/s² * 8 px/m),
+  /// also muss Sog deutlich darunter liegen damit Entkommen immer moeglich ist.
+  /// Startwert 35 px/s² ≈ 31% des max. Schubs -> ausserhalb des Kerns immer entkommbar.
+  static const double kBlackHolePullStrength = 35.0;
   /// Sog-Radius: innerhalb diesem Radius wirkt der Sog (px).
   static const double kBlackHolePullRadius = 220.0;
   /// Todlicher Kern-Radius (px) – Beruehrung = Absturz.

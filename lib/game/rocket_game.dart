@@ -138,6 +138,10 @@ class RocketGame extends FlameGame
   double get stratosphereSeconds => _scoreManager.stratosphereSeconds;
   AtmosphereZone get currentZone => AtmosphereZones.forAltitude(altitudeM);
   bool get isPlaying => phase == GamePhase.playing;
+
+  /// Zone-Label fuer Flutter-Overlay (Text und Opazitaet aus BackgroundComponent)
+  String get zoneLabelText => _background.zoneLabelText;
+  double get zoneLabelOpacity => _background.zoneLabelOpacity;
   bool get isCrashed => phase == GamePhase.crashed;
   bool get isMenu => phase == GamePhase.menu;
   bool get isReady => phase == GamePhase.ready;
@@ -233,7 +237,7 @@ class RocketGame extends FlameGame
     _updateCoinMagnet(safeDt);
     _updatePowerups(safeDt);
     _checkPowerupCollisions();
-    _checkMeteorSpawn();
+    _checkMeteorSpawn(safeDt);
     _checkMeteorCollisions();
     _checkBlackHoleSpawn();
     _updateBlackHoles(safeDt);
@@ -829,25 +833,27 @@ class RocketGame extends FlameGame
   // METEOR-SPAWN & KOLLISION
   // =========================================================================
 
-  /// Prueft ob ein neuer Meteor gespawnt werden soll
-  void _checkMeteorSpawn() {
+  /// Prueft ob neue Meteoriten gespawnt werden sollen (Ziel-Anzahl-Modell).
+  void _checkMeteorSpawn(double dt) {
     final double altM = _cameraWorldY / ScoreConstants.kPixelsPerMeter;
-    final MeteorSpawnData? data = _meteorSpawner.check(
+    final List<MeteorSpawnData> spawns = _meteorSpawner.tick(
+      dt: dt,
       altitudeM: altM,
       screenWidth: size.x,
       screenHeight: size.y,
       activeMeteors: _activeMeteors.length,
       blackHoleActive: _activeBlackHoles.isNotEmpty,
     );
-    if (data == null) return;
-
-    final meteor = MeteorComponent.spawn(
-      rnd: data.rnd,
-      screenWidth: data.screenWidth,
-      screenHeight: data.screenHeight,
-    );
-    _activeMeteors.add(meteor);
-    add(meteor);
+    for (final data in spawns) {
+      final meteor = MeteorComponent.spawn(
+        rnd: data.rnd,
+        screenWidth: data.screenWidth,
+        screenHeight: data.screenHeight,
+        xZoneIndex: data.xZoneIndex,
+      );
+      _activeMeteors.add(meteor);
+      add(meteor);
+    }
   }
 
   /// Prueft Kollisionen zwischen Meteoren und der Rakete.

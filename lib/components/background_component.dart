@@ -32,6 +32,10 @@ class BackgroundComponent extends PositionComponent {
   double _zoneLabelTimer = 0.0;
   static const double kLabelDuration = 3.0; // Sekunden sichtbar
 
+  /// Oeffentliche Getter fuer das Flutter-Overlay (HUD-Ebene ueber Planeten)
+  String get zoneLabelText => _zoneLabelText;
+  double get zoneLabelOpacity => _zoneLabelOpacity;
+
   // --- Mond-Vorbeifahrt ---
   bool _moonTriggered = false;    // einmalig pro Lauf
   bool _moonActive = false;
@@ -148,9 +152,8 @@ class BackgroundComponent extends PositionComponent {
     _renderStars(canvas);
     if (_moonActive) _renderMoon(canvas);
     _renderGround(canvas);
-    if (_zoneLabelOpacity > 0) {
-      _renderZoneLabel(canvas);
-    }
+    // Zone-Label wird jetzt als Flutter-Overlay gerendert (ueber Planeten-Ebene).
+    // _renderZoneLabel(canvas) ist damit obsolet fuer das normale Rendering.
   }
 
   /// Himmelgradient passend zur aktuellen Zone -- deckt die gesamte Bildschirmfläche ab
@@ -232,14 +235,17 @@ class BackgroundComponent extends PositionComponent {
       ..color = const Color(0xFFBCBCBC);
     canvas.drawCircle(center, r, moonPaint);
 
-    // Schattenseite (kreisrund clippen damit kein rechteckiger Schatten-Ueberhang sichtbar ist)
+    // Schattenseite: linke Haelfte des Mondes abdunkeln.
+    // Rect von center.dx - r*0.15 bis center.dx + r: deckt die volle rechte Haelfte ab.
+    // canvas.clipPath stellt sicher, dass kein Schatten ueber den Mondrand hinausragt.
     final Paint shadowPaint = Paint()
       ..color = Colors.black.withValues(alpha: 0.40);
     canvas.save();
     final Path moonClip = Path()..addOval(Rect.fromCircle(center: center, radius: r));
     canvas.clipPath(moonClip);
     canvas.drawRect(
-      Rect.fromLTWH(center.dx - r * 0.15, center.dy - r, r, r * 2),
+      // Von center-0.15r bis center+r (volle rechte Haelfte + kleiner Ueberlapp links)
+      Rect.fromLTWH(center.dx - r * 0.15, center.dy - r, r * 1.20, r * 2),
       shadowPaint,
     );
     canvas.restore();
@@ -261,26 +267,8 @@ class BackgroundComponent extends PositionComponent {
     }
   }
 
-  /// Zonen-Einblend-Label (z.B. "STRATOSPHÄRE")
-  void _renderZoneLabel(Canvas canvas) {
-    final TextPainter tp = TextPainter(
-      text: TextSpan(
-        text: _zoneLabelText,
-        style: TextStyle(
-          color: Colors.white.withValues(alpha: _zoneLabelOpacity * 0.85),
-          fontSize: 22,
-          fontWeight: FontWeight.bold,
-          letterSpacing: 6,
-        ),
-      ),
-      textDirection: TextDirection.ltr,
-    )..layout();
-
-    tp.paint(
-      canvas,
-      Offset(size.x / 2 - tp.width / 2, size.y * 0.15),
-    );
-  }
+  // _renderZoneLabel() wurde entfernt -- Zone-Label wird jetzt als Flutter-Overlay
+  // in game_screen.dart gerendert (ueber Planeten, via _game.zoneLabelText/Opacity).
 }
 
 /// Internes Datenobjekt für einen Stern

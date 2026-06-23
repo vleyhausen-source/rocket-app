@@ -357,7 +357,7 @@ class _MeteorWarningBannerState extends State<MeteorWarningBanner>
                   child: Container(
                     margin: const EdgeInsets.symmetric(horizontal: 20),
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 22, vertical: 14),
+                        horizontal: 14, vertical: 10),
                     decoration: BoxDecoration(
                       gradient: const LinearGradient(
                         colors: [Color(0xFF7A1500), Color(0xFFCC2200)],
@@ -379,8 +379,8 @@ class _MeteorWarningBannerState extends State<MeteorWarningBanner>
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Icon(Icons.warning_amber_rounded,
-                            color: Colors.orangeAccent, size: 28),
-                        SizedBox(width: 12),
+                            color: Colors.orangeAccent, size: 22),
+                        SizedBox(width: 8),
                         Flexible(
                           child: FittedBox(
                             fit: BoxFit.scaleDown,
@@ -395,9 +395,9 @@ class _MeteorWarningBannerState extends State<MeteorWarningBanner>
                             ),
                           ),
                         ),
-                        SizedBox(width: 12),
+                        SizedBox(width: 8),
                         Icon(Icons.warning_amber_rounded,
-                            color: Colors.orangeAccent, size: 28),
+                            color: Colors.orangeAccent, size: 22),
                       ],
                     ),
                   ),

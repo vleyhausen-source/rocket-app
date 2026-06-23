@@ -68,21 +68,30 @@ class MeteorComponent extends PositionComponent with CollisionCallbacks {
           anchor: Anchor.center,
         );
 
-  /// Erstellt einen neuen Meteor. Spawnt immer oben ausserhalb des Bildschirms
-  /// an einer zufaelligen X-Position (wie Planeten).
+  /// Erstellt einen neuen Meteor. Spawnt immer oben ausserhalb des Bildschirms.
+  /// [xZoneIndex] 0=links(10-40%), 1=mitte(30-70%), 2=rechts(60-90%) -- rotierende Verteilung.
   factory MeteorComponent.spawn({
     required Random rnd,
     required double screenWidth,
     required double screenHeight,
+    int xZoneIndex = 0,
   }) {
     final double radius =
         kMeteorRadiusMin + rnd.nextDouble() * (kMeteorRadiusMax - kMeteorRadiusMin);
 
-    // Immer von oben spawnen (wie Planeten), zufaelliges X
-    final Vector2 spawnPos = Vector2(
-      rnd.nextDouble() * screenWidth * 0.8 + screenWidth * 0.1,
-      -radius - 20,
-    );
+    // X-Zone fuer rotierende Horizontalverteilung
+    final double spawnX;
+    switch (xZoneIndex % 3) {
+      case 0: // Links
+        spawnX = screenWidth * 0.10 + rnd.nextDouble() * screenWidth * 0.30;
+      case 1: // Mitte
+        spawnX = screenWidth * 0.30 + rnd.nextDouble() * screenWidth * 0.40;
+      case 2: // Rechts
+      default:
+        spawnX = screenWidth * 0.60 + rnd.nextDouble() * screenWidth * 0.30;
+    }
+
+    final Vector2 spawnPos = Vector2(spawnX, -radius - 20);
 
     return MeteorComponent._(
       position: spawnPos,
@@ -246,24 +255,40 @@ class MeteorComponent extends PositionComponent with CollisionCallbacks {
 }
 
 // ---------------------------------------------------------------------------
-// MeteorSpawner -- verwaltet Spawn-Logik
+// MeteorSpawner -- verwaltet Spawn-Logik (Ziel-Anzahl-Modell)
 // ---------------------------------------------------------------------------
 
-/// Verwaltet das Spawnen von Meteoren ab einer bestimmten Hoehe.
+/// Mindest-Delay zwischen zwei gestaffelten Nachfuell-Spawns (Sekunden).
+const double kMeteorRefillDelayMin = 0.3;
+/// Max-Delay zwischen zwei gestaffelten Nachfuell-Spawns (Sekunden).
+const double kMeteorRefillDelayMax = 0.8;
+
+/// Verwaltet das Spawnen von Meteoren.
+/// Neues Modell: "Ziel-Anzahl gleichzeitig aktiver Meteoriten halten".
+/// Pro Update-Tick wird geprueft ob aktive < Ziel; falls ja, werden
+/// Refill-Countdowns (gestaffelt 0.3–0.8s) eingereiht.
 class MeteorSpawner {
   final Random _rnd = Random();
 
-  /// Naechste Hoehe (Meter) bei der ein Meteor gespawnt wird
-  double _nextSpawnAltM = kMeteorMinAltitudeM;
+  /// Wartezeit bis zum naechsten ersten Spawn nach kMeteorMinAltitudeM.
+  double _initialCooldown = 0.0;
+  bool _started = false;
 
-  /// Initialisiert die erste Spawn-Hoehe.
-  /// Erster Spawn direkt ab kMeteorMinAltitudeM -- kein kuenstlicher Vorlauf.
+  /// Liste von ausstehenden Refill-Countdowns (Sekunden verbleibend).
+  final List<double> _pendingCountdowns = [];
+
+  /// Letzter bekannter xZone-Index fuer rotierende horizontale Positionen.
+  int _lastXZoneIndex = -1;
+
   void reset() {
-    _nextSpawnAltM = kMeteorMinAltitudeM;
+    _started = false;
+    _initialCooldown = 0.0;
+    _pendingCountdowns.clear();
+    _lastXZoneIndex = -1;
   }
 
-  /// Berechnet wie viele Meteoriten gleichzeitig erlaubt sind (feste Schwellen).
-  /// 1 ab 10.750m | 2 ab 15.000m | 3 ab 20.000m (nur ohne aktives Schwarzes Loch).
+  /// Berechnet wie viele Meteoriten gleichzeitig aktiv sein sollen (feste Schwellen).
+  /// <15.000m=1 | 15.000–19.999m=2 | >=20.000m=3 | >=25.000m=2 (Platz fuers BH).
   /// Mit aktivem Schwarzen Loch: max kMeteorMaxWithBlackHole.
   static int maxConcurrent({
     required double altitudeM,
@@ -271,9 +296,11 @@ class MeteorSpawner {
   }) {
     if (altitudeM < GameConstants.kMeteorRampBaseHeight) return 0;
 
-    // Rohes Limit basierend auf Hoehenzone
     final int rawLimit;
-    if (altitudeM >= GameConstants.kMeteorRamp3Height) {
+    if (altitudeM >= GameConstants.kBlackHoleMinHeight) {
+      // Ab 25.000m: max 2 (Platz fuers Schwarze Loch)
+      rawLimit = 2;
+    } else if (altitudeM >= GameConstants.kMeteorRamp3Height) {
       rawLimit = 3;
     } else if (altitudeM >= GameConstants.kMeteorRamp2Height) {
       rawLimit = 2;
@@ -281,7 +308,6 @@ class MeteorSpawner {
       rawLimit = 1;
     }
 
-    // Wenn Schwarzes Loch aktiv: max kMeteorMaxWithBlackHole
     return rawLimit.clamp(
       1,
       blackHoleActive
@@ -290,42 +316,71 @@ class MeteorSpawner {
     );
   }
 
-  /// Prueft ob ein neuer Meteor gespawnt werden soll.
-  /// [activeMeteors]: aktuell aktive Meteoriten-Anzahl.
-  /// [blackHoleActive]: ob gerade ein Schwarzes Loch aktiv ist.
-  MeteorSpawnData? check({
+  /// Tick-Methode: gibt eine Liste von MeteorSpawnData zurueck (0–N Stueck).
+  /// Jedes Element = einen sofort zu spawnenden Meteor.
+  List<MeteorSpawnData> tick({
+    required double dt,
     required double altitudeM,
     required double screenWidth,
     required double screenHeight,
     required int activeMeteors,
     required bool blackHoleActive,
   }) {
-    if (altitudeM < kMeteorMinAltitudeM) return null;
+    if (altitudeM < kMeteorMinAltitudeM) return const [];
 
-    // Gleichzeitigkeits-Limit pruefen
-    final int maxCount = maxConcurrent(
+    // Erster Start: kurze Einlauf-Pause von 1s
+    if (!_started) {
+      _initialCooldown -= dt;
+      if (_initialCooldown > 0) return const [];
+      _started = true;
+    }
+
+    final int target = maxConcurrent(
       altitudeM: altitudeM,
       blackHoleActive: blackHoleActive,
     );
-    if (activeMeteors >= maxCount) return null;
 
-    // Spawn-Interval gilt nur fuer den ersten (neuen) Meteor-Slot.
-    // Sind bereits Meteoriten aktiv und das Limit erlaubt mehr davon,
-    // soll kein kuenstliches Warte-Interval einen Nachschuss blockieren.
-    // Das verhindert, dass bei 15.000-20.000m (max 2) nur 1 Meteor erscheint,
-    // weil _nextSpawnAltM noch nicht abgelaufen ist.
-    if (activeMeteors == 0 && altitudeM < _nextSpawnAltM) return null;
+    // Aktuellen Bedarf berechnen (aktive + bereits geplante Refills)
+    final int alreadyPlanned = activeMeteors + _pendingCountdowns.length;
+    final int deficit = target - alreadyPlanned;
 
-    // Naechsten Spawn planen (neues Interval ab jetzt)
-    _nextSpawnAltM = altitudeM +
-        kMeteorSpawnIntervalMin +
-        _rnd.nextDouble() * (kMeteorSpawnIntervalMax - kMeteorSpawnIntervalMin);
+    // Neue Refill-Countdowns einreihen fuer jeden fehlenden Slot
+    if (deficit > 0) {
+      double cumulativeDelay = 0.0;
+      for (int i = 0; i < deficit; i++) {
+        cumulativeDelay +=
+            kMeteorRefillDelayMin + _rnd.nextDouble() * (kMeteorRefillDelayMax - kMeteorRefillDelayMin);
+        _pendingCountdowns.add(cumulativeDelay);
+      }
+    }
 
-    return MeteorSpawnData(
-      rnd: _rnd,
-      screenWidth: screenWidth,
-      screenHeight: screenHeight,
-    );
+    // Countdowns herunterzaehlen und faellige Spawns sammeln
+    final List<MeteorSpawnData> toSpawn = [];
+    for (int i = _pendingCountdowns.length - 1; i >= 0; i--) {
+      _pendingCountdowns[i] -= dt;
+      if (_pendingCountdowns[i] <= 0) {
+        _pendingCountdowns.removeAt(i);
+        // X-Zone wechseln fuer raeumliche Verteilung
+        _lastXZoneIndex = (_lastXZoneIndex + 1) % 3;
+        toSpawn.add(MeteorSpawnData(
+          rnd: _rnd,
+          screenWidth: screenWidth,
+          screenHeight: screenHeight,
+          xZoneIndex: _lastXZoneIndex,
+        ));
+      }
+    }
+
+    // Debug-Ausgabe
+    if (toSpawn.isNotEmpty) {
+      debugPrint(
+        '[Meteor] alt=${altitudeM.toStringAsFixed(0)}m  '
+        'target=$target  active=$activeMeteors  '
+        'pending=${_pendingCountdowns.length}  spawning=${toSpawn.length}',
+      );
+    }
+
+    return toSpawn;
   }
 }
 
@@ -334,10 +389,13 @@ class MeteorSpawnData {
   final Random rnd;
   final double screenWidth;
   final double screenHeight;
+  /// X-Zonen-Index (0=links, 1=mitte, 2=rechts) fuer rotierende Horizontalposition.
+  final int xZoneIndex;
 
   const MeteorSpawnData({
     required this.rnd,
     required this.screenWidth,
     required this.screenHeight,
+    this.xZoneIndex = 0,
   });
 }
