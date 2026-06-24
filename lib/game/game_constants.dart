@@ -120,7 +120,7 @@ class GameConstants {
   /// Max-Schub der Rakete betraegt ~112 px/s² (14 m/s² * 8 px/m),
   /// also muss Sog deutlich darunter liegen damit Entkommen immer moeglich ist.
   /// Startwert 35 px/s² ≈ 31% des max. Schubs -> ausserhalb des Kerns immer entkommbar.
-  static const double kBlackHolePullStrength = 35.0;
+  static const double kBlackHolePullStrength = 55.0;
   /// Sog-Radius: innerhalb diesem Radius wirkt der Sog (px).
   static const double kBlackHolePullRadius = 220.0;
   /// Todlicher Kern-Radius (px) – Beruehrung = Absturz.
